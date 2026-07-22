@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title != null ? title + ' - Smart Gym' : 'Smart Gym'}">Smart Gym</title>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font -->
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="app-container" th:fragment="layout(content, activeTab)">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <i class="fa-solid fa-dumbbell" style="color: var(--primary-light); font-size: 24px;"></i>
+                <div class="logo-text">SMART<span>GYM</span></div>
+            </div>
+
+             <nav style="flex-grow: 1;">
+                <ul class="sidebar-menu">
+                    <li class="menu-item" th:classappend="${activeTab == 'dashboard'} ? 'active'">
+                        <a href="/dashboard">
+                            <i class="fa-solid fa-chart-pie"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="menu-item" th:classappend="${activeTab == 'members'} ? 'active'" sec:authorize="hasAnyRole('ADMIN', 'TRAINER')">
+                        <a href="/members">
+                            <i class="fa-solid fa-users"></i>
+                            <span>Hội viên</span>
+                        </a>
+                    </li>
+                    <li class="menu-item" th:classappend="${activeTab == 'trainers'} ? 'active'" sec:authorize="hasRole('ADMIN')">
+                        <a href="/trainers">
+                            <i class="fa-solid fa-user-tie"></i>
+                            <span>Huấn luyện viên</span>
+                        </a>
+                    </li>
+                    <li class="menu-item" th:classappend="${activeTab == 'packages'} ? 'active'" sec:authorize="hasRole('ADMIN')">
+                        <a href="/packages">
+                            <i class="fa-solid fa-box-archive"></i>
+                            <span>Gói tập</span>
+                        </a>
+                    </li>
+                    <li class="menu-item" th:classappend="${activeTab == 'payments'} ? 'active'" sec:authorize="hasRole('ADMIN')">
+                        <a href="/payments">
+                            <i class="fa-solid fa-file-invoice-dollar"></i>
+                            <span>Hóa đơn</span>
+                        </a>
+                    </li>
+                    <li class="menu-item" th:classappend="${activeTab == 'bookings'} ? 'active'" sec:authorize="hasAnyRole('ADMIN', 'TRAINER', 'MEMBER')">
+                        <a href="/bookings">
+                            <i class="fa-solid fa-calendar-check"></i>
+                            <span>Đặt lịch</span>
+                        </a>
+                    </li>
+                    <li class="menu-item" th:classappend="${activeTab == 'buy-package'} ? 'active'" sec:authorize="hasAnyRole('ADMIN', 'TRAINER', 'MEMBER')">
+                        <a href="/packages/buy">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            <span>Đăng ký Gói</span>
+                        </a>
+                    </li>
+
+                    <li class="menu-item" th:classappend="${activeTab == 'checkin'} ? 'active'" sec:authorize="hasRole('ADMIN')">
+                        <a href="/checkin">
+                            <i class="fa-solid fa-door-open"></i>
+                            <span>Check-in</span>
+                        </a>
+                    </li>
+                    <li class="menu-item" th:classappend="${activeTab == 'equipments'} ? 'active'" sec:authorize="hasRole('ADMIN')">
+                        <a href="/equipments">
+                            <i class="fa-solid fa-screwdriver-wrench"></i>
+                            <span>Thiết bị</span>
+                        </a>
+                    </li>
+                    <li class="menu-item" th:classappend="${activeTab == 'schedules'} ? 'active'" sec:authorize="hasRole('ADMIN')">
+                        <a href="/schedules">
+                            <i class="fa-solid fa-calendar-days"></i>
+                            <span>Quản lý Lớp học</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+
+            <div class="sidebar-footer" style="display: flex; flex-direction: column; gap: 8px; padding: 16px;">
+                <button onclick="openChangePasswordModal()" class="logout-btn" style="background: rgba(255,255,255,0.05); color: var(--text-white); width: 100%; border: 1px solid var(--border-color); text-align: left; padding: 10px 16px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 14px;">
+                    <i class="fa-solid fa-key" style="font-size: 16px; color: var(--warning);"></i>
+                    <span>Đổi mật khẩu</span>
+                </button>
+                <form th:action="@{/logout}" method="post" style="width: 100%;">
+                    <button type="submit" class="logout-btn" style="width: 100%; justify-content: flex-start;">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Đăng xuất</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <main class="main-content">
+            <div th:replace="${content}"></div>
+        </main>
+
+        <!-- Change Password Modal -->
+        <div id="change-password-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+            <div class="glass-card" style="width: 400px; padding: 32px; background-color: var(--bg-card); position: relative; border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+                <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 24px; color: var(--text-white);">Đổi mật khẩu</h3>
+                
+                <div class="alert-danger" id="change-pwd-error" style="display: none; margin-bottom: 16px; padding: 10px; border-radius: 6px; font-size: 13px;"></div>
+                <div class="alert-success" id="change-pwd-success" style="display: none; margin-bottom: 16px; padding: 10px; border-radius: 6px; font-size: 13px; background-color: rgba(16, 185, 129, 0.12); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2);"></div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label" style="display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 13px;">Mật khẩu cũ <span style="color: var(--danger);">*</span></label>
+                    <input type="password" id="old-password" class="form-input" style="width: 100%;" placeholder="Nhập mật khẩu cũ">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label" style="display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 13px;">Mật khẩu mới <span style="color: var(--danger);">*</span></label>
+                    <input type="password" id="new-password" class="form-input" style="width: 100%;" placeholder="Nhập mật khẩu mới từ 6 ký tự">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label" style="display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 13px;">Xác nhận mật khẩu mới <span style="color: var(--danger);">*</span></label>
+                    <input type="password" id="confirm-new-password" class="form-input" style="width: 100%;" placeholder="Nhập lại mật khẩu mới">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button onclick="closeChangePasswordModal()" class="btn btn-secondary btn-sm">Hủy</button>
+                    <button onclick="submitChangePassword()" class="btn btn-primary btn-sm">Lưu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Toast Container -->
+        <div id="toast-container" style="position: fixed; top: 24px; right: 24px; z-index: 10000; display: flex; flex-direction: column; gap: 12px; pointer-events: none;"></div>
+
+        <!-- Global Custom Confirm Modal -->
+        <div id="confirm-modal" class="modal-overlay" style="display: none; justify-content: center; align-items: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 9999;">
+            <div class="glass-card modal-content" style="max-width: 400px; width: 90%; text-align: center; padding: 32px 24px; background: rgba(19, 10, 31, 0.95); backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: 20px;">
+                <i class="fa-solid fa-circle-question" style="font-size: 48px; color: var(--primary-light); margin-bottom: 20px;"></i>
+                <h3 style="color: var(--text-white); margin-bottom: 12px; font-weight: 700; font-size: 18px;">Xác nhận</h3>
+                <p id="confirm-modal-message" style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 28px;">Nội dung xác nhận...</p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button id="btn-confirm-cancel" class="btn btn-secondary btn-sm" style="padding: 10px 20px;">Hủy</button>
+                    <button id="btn-confirm-ok" class="btn btn-primary btn-sm" style="padding: 10px 20px;">Đồng ý</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function openChangePasswordModal() {
+                document.getElementById('change-pwd-error').style.display = 'none';
+                document.getElementById('change-pwd-success').style.display = 'none';
+                document.getElementById('old-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-new-password').value = '';
+                document.getElementById('change-password-modal').style.display = 'flex';
+            }
+
+            function closeChangePasswordModal() {
+                document.getElementById('change-password-modal').style.display = 'none';
+            }
+
+            async function submitChangePassword() {
+                const oldPassword = document.getElementById('old-password').value;
+                const newPassword = document.getElementById('new-password').value;
+                const confirmPassword = document.getElementById('confirm-new-password').value;
+
+                const errorAlert = document.getElementById('change-pwd-error');
+                const successAlert = document.getElementById('change-pwd-success');
+
+                errorAlert.style.display = 'none';
+                successAlert.style.display = 'none';
+
+                if (!oldPassword || !newPassword || !confirmPassword) {
+                    errorAlert.textContent = 'Vui lòng điền đầy đủ các trường.';
+                    errorAlert.style.display = 'block';
+                    return;
+                }
+
+                if (newPassword.length < 6) {
+                    errorAlert.textContent = 'Mật khẩu mới phải từ 6 ký tự.';
+                    errorAlert.style.display = 'block';
+                    return;
+                }
+
+                if (newPassword !== confirmPassword) {
+                    errorAlert.textContent = 'Mật khẩu mới không trùng khớp.';
+                    errorAlert.style.display = 'block';
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/users/change-password', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ oldPassword, newPassword })
+                    });
+
+                    if (response.ok) {
+                        successAlert.textContent = 'Đổi mật khẩu thành công!';
+                        successAlert.style.display = 'block';
+                        setTimeout(() => {
+                            closeChangePasswordModal();
+                        }, 1500);
+                    } else {
+                        let msg = 'Đổi mật khẩu thất bại.';
+                        try {
+                            const err = await response.json();
+                            msg = err.message || msg;
+                        } catch (e) {
+                            if (response.status === 400) msg = 'Mật khẩu cũ không chính xác hoặc dữ liệu không hợp lệ.';
+                        }
+                        errorAlert.textContent = msg;
+                        errorAlert.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error(error);
+                    errorAlert.textContent = 'Lỗi kết nối máy chủ.';
+                    errorAlert.style.display = 'block';
+                }
+            }
+
+            function showToast(message, type = 'success') {
+                const container = document.getElementById('toast-container');
+                if (!container) return;
+                const toast = document.createElement('div');
+                toast.className = 'glass-card toast';
+                toast.style.cssText = `
+                    pointer-events: auto;
+                    min-width: 300px;
+                    padding: 16px 20px;
+                    border-radius: 12px;
+                    border: 1px solid;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    animation: slideIn 0.3s ease;
+                    background: rgba(13, 6, 20, 0.95);
+                    backdrop-filter: blur(8px);
+                `;
+                
+                let icon = '<i class="fa-solid fa-circle-check" style="color: var(--success); font-size: 18px;"></i>';
+                let border = 'rgba(16, 185, 129, 0.3)';
+                if (type === 'danger' || type === 'error') {
+                    icon = '<i class="fa-solid fa-circle-xmark" style="color: var(--danger); font-size: 18px;"></i>';
+                    border = 'rgba(239, 68, 68, 0.3)';
+                } else if (type === 'warning') {
+                    icon = '<i class="fa-solid fa-triangle-exclamation" style="color: var(--warning); font-size: 18px;"></i>';
+                    border = 'rgba(245, 158, 11, 0.3)';
+                }
+                
+                toast.style.borderColor = border;
+                toast.innerHTML = `
+                    ${icon}
+                    <div style="font-size: 14px; font-weight: 500; color: var(--text-white); flex-grow: 1;">${message}</div>
+                    <i class="fa-solid fa-xmark" style="color: var(--text-muted); cursor: pointer; font-size: 14px;" onclick="this.parentElement.remove()"></i>
+                `;
+                container.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => toast.remove(), 300);
+                }, 4000);
+            }
+
+            let confirmCallback = null;
+
+            function showConfirm(message, onConfirm) {
+                document.getElementById('confirm-modal-message').textContent = message;
+                document.getElementById('confirm-modal').style.display = 'flex';
+                confirmCallback = onConfirm;
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const cancelBtn = document.getElementById('btn-confirm-cancel');
+                const okBtn = document.getElementById('btn-confirm-ok');
+                
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', () => {
+                        document.getElementById('confirm-modal').style.display = 'none';
+                        confirmCallback = null;
+                    });
+                }
+                
+                if (okBtn) {
+                    okBtn.addEventListener('click', () => {
+                        document.getElementById('confirm-modal').style.display = 'none';
+                        if (confirmCallback) {
+                            confirmCallback();
+                        }
+                        confirmCallback = null;
+                    });
+                }
+            });
+        </script>
+    </div>
+</body>
+</html>

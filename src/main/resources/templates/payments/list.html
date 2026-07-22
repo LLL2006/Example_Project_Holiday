@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/main :: head('Quản lý Hóa đơn')}">
+</head>
+<body>
+    <div th:replace="~{layout/main :: layout(~{::content}, 'payments')}">
+        <div th:fragment="content">
+            <!-- Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Quản lý Hóa đơn</h1>
+                    <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Danh sách giao dịch thanh toán và thu ngân</p>
+                </div>
+                <button onclick="openAddModal()" class="btn btn-primary">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> Lập hóa đơn mới
+                </button>
+            </div>
+
+            <!-- Search and Filter Bar -->
+            <div class="glass-card" style="padding: 16px; margin-bottom: 24px; display: flex; gap: 16px; align-items: center;">
+                <div style="position: relative; flex-grow: 1;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 16px; top: 15px; color: var(--text-muted);"></i>
+                    <input type="text" id="search-input" class="form-input" style="padding-left: 45px;" placeholder="Tìm kiếm theo mã số hóa đơn...">
+                </div>
+                <button onclick="searchPayments()" class="btn btn-primary" style="padding: 12px 24px;">
+                    Tìm kiếm
+                </button>
+            </div>
+
+            <!-- Table Card -->
+            <div class="glass-card" style="padding: 0;">
+                <div class="table-container">
+                    <table class="custom-table" id="payments-table">
+                        <thead>
+                            <tr>
+                                <th>Mã hóa đơn</th>
+                                <th>Tên hội viên</th>
+                                <th>Gói đăng ký</th>
+                                <th>Số tiền (VND)</th>
+                                <th>Phương thức</th>
+                                <th>Ngày giao dịch</th>
+                                <th>Trạng thái</th>
+                                <th>Ghi chú</th>
+                                <th style="text-align: right;">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payments-list">
+                            <!-- Loaded via AJAX -->
+                            <tr>
+                                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                                    Đang tải danh sách hóa đơn...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-top: 1px solid var(--border-color);">
+                    <div style="font-size: 14px; color: var(--text-muted);" id="page-info">
+                        Hiển thị 0 - 0 của 0 hóa đơn
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="prevPage()" id="btn-prev" class="btn btn-secondary btn-sm" disabled>
+                            <i class="fa-solid fa-chevron-left"></i> Trước
+                        </button>
+                        <button onclick="nextPage()" id="btn-next" class="btn btn-secondary btn-sm" disabled>
+                            Sau <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Payment Modal -->
+            <div id="payment-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
+                <div class="glass-card" style="width: 480px; padding: 32px; background-color: var(--bg-card);">
+                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 24px; color: var(--text-white);">Lập hóa đơn đăng ký gói tập</h3>
+                    
+                    <div class="form-group">
+                        <label for="member-select" class="form-label">Chọn hội viên thanh toán <span style="color: var(--danger);">*</span></label>
+                        <select id="member-select" class="form-select"></select>
+                        <div class="invalid-feedback" id="err-member-select">Vui lòng chọn hội viên.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="package-select" class="form-label">Chọn gói tập <span style="color: var(--danger);">*</span></label>
+                        <select id="package-select" class="form-select"></select>
+                        <div class="invalid-feedback" id="err-package-select">Vui lòng chọn gói tập.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="paymentMethod" class="form-label">Phương thức thanh toán <span style="color: var(--danger);">*</span></label>
+                        <select id="paymentMethod" class="form-select">
+                            <option value="CASH">Tiền mặt (CASH)</option>
+                            <option value="BANK_TRANSFER">Chuyển khoản (BANK_TRANSFER)</option>
+                            <option value="CREDIT_CARD">Thẻ tín dụng (CREDIT_CARD)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="note" class="form-label">Ghi chú</label>
+                        <input type="text" id="note" class="form-input" placeholder="Ghi chú thêm...">
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px;">
+                        <button onclick="closeModal()" class="btn btn-secondary btn-sm">Hủy</button>
+                        <button onclick="submitPaymentForm()" class="btn btn-primary btn-sm">Xác nhận</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Script -->
+            <script>
+                let currentPage = 0;
+                let pageSize = 10;
+
+                async function fetchPayments(page) {
+                    currentPage = page;
+                    const query = document.getElementById('search-input').value.trim();
+                    let url = `/api/payments?page=${page}&size=${pageSize}`;
+                    if (query !== "") {
+                        url = `/api/payments/search?keyword=${encodeURIComponent(query)}&page=${page}&size=${pageSize}`;
+                    }
+
+                    try {
+                        const response = await fetch(url);
+                        if (response.ok) {
+                            const data = await response.json();
+                            renderPayments(data.content);
+                            updatePagination(data);
+                        }
+                    } catch (error) {
+                        console.error("Lỗi khi tải danh sách hóa đơn:", error);
+                    }
+                }
+
+                function renderPayments(payments) {
+                    const tbody = document.getElementById('payments-list');
+                    tbody.innerHTML = '';
+
+                    if (payments.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Không tìm thấy hóa đơn nào.</td></tr>`;
+                        return;
+                    }
+
+                    payments.forEach(payment => {
+                        const statusBadge = payment.paymentStatus === 'PAID'
+                            ? '<span class="badge badge-active">Đã thanh toán</span>'
+                            : (payment.paymentStatus === 'REFUNDED' 
+                               ? '<span class="badge badge-expired">Hoàn tiền</span>'
+                               : '<span class="badge badge-inactive" style="background-color: rgba(245,158,11,0.12); color: var(--warning); border:1px solid rgba(245,158,11,0.2);">Chờ duyệt</span>');
+
+                        const paymentDateStr = payment.paymentDate 
+                            ? new Date(payment.paymentDate).toLocaleString('vi-VN') 
+                            : '--';
+
+                        let actionBtn = '';
+                        if (payment.paymentStatus === 'UNPAID') {
+                            actionBtn = `<button class="btn btn-secondary btn-sm" onclick="confirmPayment(${payment.id})" style="padding: 4px 8px; color: var(--success);" title="Xác nhận đã thu tiền"><i class="fa-solid fa-check"></i> Duyệt</button>`;
+                        } else {
+                            actionBtn = `<span style="color: var(--text-muted); font-size:12px;">--</span>`;
+                        }
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td style="font-weight: 600; color: var(--text-white);">${payment.invoiceCode}</td>
+                                <td>${payment.memberName}</td>
+                                <td>${payment.packageName}</td>
+                                <td style="font-weight: 600; color: var(--primary-light);">${new Intl.NumberFormat('vi-VN').format(payment.amount)}đ</td>
+                                <td>${payment.paymentMethod}</td>
+                                <td>${paymentDateStr}</td>
+                                <td>${statusBadge}</td>
+                                <td style="font-size: 13px; color: var(--text-muted);">${payment.note || '--'}</td>
+                                <td style="text-align: right; display:flex; justify-content: flex-end; gap:6px;">${actionBtn}</td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                function updatePagination(pageObj) {
+                    document.getElementById('page-info').textContent = `Hiển thị ${pageObj.numberOfElements} của ${pageObj.totalElements} hóa đơn`;
+                    document.getElementById('btn-prev').disabled = pageObj.first;
+                    document.getElementById('btn-next').disabled = pageObj.last;
+                }
+
+                function prevPage() {
+                    if (currentPage > 0) fetchPayments(currentPage - 1);
+                }
+
+                function nextPage() {
+                    fetchPayments(currentPage + 1);
+                }
+
+                function searchPayments() {
+                    fetchPayments(0);
+                }
+
+                // Modal control
+                // Custom validation helper
+                function validateField(inputEl, condition, errElId) {
+                    const errEl = document.getElementById(errElId);
+                    if (condition) {
+                        inputEl.classList.remove('is-invalid');
+                        if (errEl) errEl.style.display = 'none';
+                        return true;
+                    } else {
+                        inputEl.classList.add('is-invalid');
+                        if (errEl) errEl.style.display = 'block';
+                        return false;
+                    }
+                }
+
+                function resetValidationErrors() {
+                    const fields = ['member-select', 'package-select'];
+                    fields.forEach(field => {
+                        const input = document.getElementById(field);
+                        if (input) input.classList.remove('is-invalid');
+                        const err = document.getElementById('err-' + field);
+                        if (err) err.style.display = 'none';
+                    });
+                }
+
+                async function openAddModal() {
+                    resetValidationErrors();
+                    const memberSelect = document.getElementById('member-select');
+                    const packageSelect = document.getElementById('package-select');
+
+                    memberSelect.innerHTML = '<option>Đang tải hội viên...</option>';
+                    packageSelect.innerHTML = '<option>Đang tải gói tập...</option>';
+
+                    document.getElementById('payment-modal').style.display = 'flex';
+
+                    // Fetch members
+                    try {
+                        const response = await fetch('/api/members?size=200');
+                        if (response.ok) {
+                            const data = await response.json();
+                            memberSelect.innerHTML = '<option value="">-- Chọn hội viên --</option>';
+                            data.content.forEach(member => {
+                                memberSelect.innerHTML += `<option value="${member.id}">${member.fullName} (${member.phone})</option>`;
+                            });
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+
+                    // Fetch packages
+                    try {
+                        const response = await fetch('/api/packages?size=100');
+                        if (response.ok) {
+                            const data = await response.json();
+                            packageSelect.innerHTML = '<option value="">-- Chọn gói tập đăng ký --</option>';
+                            data.content.forEach(pkg => {
+                                if (pkg.status === 'ACTIVE') {
+                                    packageSelect.innerHTML += `<option value="${pkg.id}">${pkg.packageName} (${new Intl.NumberFormat('vi-VN').format(pkg.price)}đ)</option>`;
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                function closeModal() {
+                    document.getElementById('payment-modal').style.display = 'none';
+                    document.getElementById('note').value = '';
+                    resetValidationErrors();
+                }
+
+                async function submitPaymentForm() {
+                    resetValidationErrors();
+                    
+                    let isValid = true;
+                    const memberSelect = document.getElementById('member-select');
+                    isValid = validateField(memberSelect, memberSelect.value !== '', 'err-member-select') && isValid;
+
+                    const packageSelect = document.getElementById('package-select');
+                    isValid = validateField(packageSelect, packageSelect.value !== '', 'err-package-select') && isValid;
+
+                    if (!isValid) return;
+
+                    const memberId = memberSelect.value;
+                    const packageId = packageSelect.value;
+
+                    try {
+                        const response = await fetch('/api/payments', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ memberId, packageId, paymentMethod, note })
+                        });
+
+                        if (response.ok) {
+                            closeModal();
+                            fetchPayments(0);
+                        } else {
+                            const err = await response.json();
+                            showToast("Lỗi: " + (err.message || "Yêu cầu thanh toán không hợp lệ."), "error");
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                async function confirmPayment(id) {
+                    showConfirm("Xác nhận đã nhận đủ tiền và kích hoạt gói tập cho hội viên?", async () => {
+                        try {
+                            const response = await fetch(`/api/payments/${id}/confirm`, {
+                                method: 'PUT'
+                            });
+                            if (response.ok) {
+                                showToast("Duyệt hóa đơn thanh toán thành công!", "success");
+                                fetchPayments(currentPage);
+                            } else {
+                                const err = await response.json();
+                                showToast("Lỗi: " + (err.message || "Không thể duyệt hóa đơn."), "error");
+                            }
+                        } catch (error) {
+                            console.error(error);
+                            showToast("Lỗi kết nối.", "error");
+                        }
+                    });
+                }
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    fetchPayments(0);
+                    
+                    document.getElementById('search-input').addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') searchPayments();
+                    });
+                });
+            </script>
+        </div>
+    </div>
+</body>
+</html>

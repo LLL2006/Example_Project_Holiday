@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - Smart Gym</title>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="login-container">
+    <div class="login-card" style="width: 100%; max-width: 460px; padding: 40px 32px;">
+        <div class="login-header">
+            <i class="fa-solid fa-dumbbell" style="color: var(--primary-light); font-size: 40px; margin-bottom: 12px;"></i>
+            <div class="login-logo">SMART<span>GYM</span></div>
+            <div class="login-subtitle">Hệ thống quản lý phòng tập thông minh</div>
+        </div>
+
+        <!-- Error Alert -->
+        <div th:if="${param.error}" class="alert-danger">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            Tài khoản hoặc mật khẩu không chính xác.
+        </div>
+
+        <!-- Logout Alert -->
+        <div th:if="${param.logout}" class="alert-success">
+            <i class="fa-solid fa-circle-check"></i>
+            Bạn đã đăng xuất thành công.
+        </div>
+
+        <!-- Login Form -->
+        <form th:action="@{/login}" method="post" onsubmit="return validateLogin(event)" novalidate>
+            <div class="form-group" style="text-align: left;">
+                <label for="username" class="form-label">Số điện thoại</label>
+                <div style="position: relative;">
+                    <i class="fa-solid fa-user" style="position: absolute; left: 16px; top: 15px; color: var(--text-muted);"></i>
+                    <input type="text" id="username" name="username" class="form-input" style="padding-left: 45px;" placeholder="Nhập số điện thoại" autofocus>
+                </div>
+                <div class="invalid-feedback" id="err-username">Vui lòng nhập số điện thoại.</div>
+            </div>
+
+            <div class="form-group" style="text-align: left; margin-bottom: 30px;">
+                <label for="password" class="form-label">Mật khẩu</label>
+                <div style="position: relative;">
+                    <i class="fa-solid fa-lock" style="position: absolute; left: 16px; top: 15px; color: var(--text-muted);"></i>
+                    <input type="password" id="password" name="password" class="form-input" style="padding-left: 45px;" placeholder="Nhập mật khẩu">
+                </div>
+                <div class="invalid-feedback" id="err-password">Vui lòng nhập mật khẩu.</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px;">
+                Đăng nhập
+            </button>
+
+            <!-- Link to Register -->
+            <div style="margin-top: 24px; text-align: center; font-size: 14px;">
+                <span style="color: var(--text-muted);">Chưa có tài khoản?</span>
+                <a href="/register" style="color: var(--primary-light); text-decoration: none; font-weight: 600; margin-left: 6px;">Đăng ký ngay</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function validateLogin(event) {
+            let isValid = true;
+            const userEl = document.getElementById('username');
+            const passEl = document.getElementById('password');
+
+            if (userEl.value.trim() === '') {
+                userEl.classList.add('is-invalid');
+                document.getElementById('err-username').style.display = 'block';
+                isValid = false;
+            } else {
+                userEl.classList.remove('is-invalid');
+                document.getElementById('err-username').style.display = 'none';
+            }
+
+            if (passEl.value === '') {
+                passEl.classList.add('is-invalid');
+                document.getElementById('err-password').style.display = 'block';
+                isValid = false;
+            } else {
+                passEl.classList.remove('is-invalid');
+                document.getElementById('err-password').style.display = 'none';
+            }
+
+            if (!isValid) {
+                event.preventDefault();
+                return false;
+            }
+            return true;
+        }
+    </script>
+</body>
+</html>

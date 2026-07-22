@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng ký hội viên - Smart Gym</title>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .register-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #1F112E 0%, var(--bg-dark) 100%);
+            padding: 20px;
+        }
+        .register-card {
+            width: 100%;
+            max-width: 580px;
+            padding: 28px 32px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+        .register-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .register-logo {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--text-white);
+            margin-bottom: 4px;
+        }
+        .register-logo span {
+            color: var(--primary-light);
+        }
+        .register-subtitle {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body class="register-container">
+    <!-- Registration Form Card -->
+    <div class="register-card" id="form-container">
+        <div class="register-header">
+            <i class="fa-solid fa-user-plus" style="color: var(--primary-light); font-size: 36px; margin-bottom: 8px;"></i>
+            <div class="register-logo">ĐĂNG KÝ<span> HỘI VIÊN</span></div>
+            <div class="register-subtitle">Tham gia tập luyện cùng Smart Gym</div>
+        </div>
+
+        <form id="register-form" onsubmit="handleRegister(event)" novalidate>
+            <!-- General error message container -->
+            <div class="alert-danger" id="error-alert" style="display: none; margin-bottom: 20px;"></div>
+
+            <!-- Full Name -->
+            <div class="form-group">
+                <label for="fullName" class="form-label">Họ và tên <span style="color: var(--danger);">*</span></label>
+                <input type="text" id="fullName" class="form-input" placeholder="Nhập họ và tên của bạn">
+                <div class="invalid-feedback" id="err-fullName">Vui lòng nhập họ và tên.</div>
+            </div>
+
+            <!-- Row: Phone & Gender -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                    <label for="phone" class="form-label">Số điện thoại <span style="color: var(--danger);">*</span></label>
+                    <input type="tel" id="phone" class="form-input" placeholder="Dùng làm tài khoản đăng nhập">
+                    <div class="invalid-feedback" id="err-phone">Số điện thoại không hợp lệ (gồm 10 số).</div>
+                </div>
+                <div class="form-group">
+                    <label for="gender" class="form-label">Giới tính <span style="color: var(--danger);">*</span></label>
+                    <select id="gender" class="form-select">
+                        <option value="MALE">Nam</option>
+                        <option value="FEMALE">Nữ</option>
+                        <option value="OTHER">Khác</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label for="email" class="form-label">Email <span style="color: var(--danger);">*</span></label>
+                <input type="email" id="email" class="form-input" placeholder="Ví dụ: hoten@gmail.com">
+                <div class="invalid-feedback" id="err-email">Email không hợp lệ.</div>
+            </div>
+
+            <!-- DOB -->
+            <div class="form-group">
+                <label for="dateOfBirth" class="form-label">Ngày sinh <span style="color: var(--danger);">*</span></label>
+                <input type="date" id="dateOfBirth" class="form-input">
+                <div class="invalid-feedback" id="err-dateOfBirth">Vui lòng nhập ngày sinh.</div>
+            </div>
+
+            <!-- Password & Confirm Password -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                    <label for="password" class="form-label">Mật khẩu <span style="color: var(--danger);">*</span></label>
+                    <input type="password" id="password" class="form-input" placeholder="Nhập mật khẩu tự chọn">
+                    <div class="invalid-feedback" id="err-password">Mật khẩu phải từ 6 ký tự.</div>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword" class="form-label">Xác nhận mật khẩu <span style="color: var(--danger);">*</span></label>
+                    <input type="password" id="confirmPassword" class="form-input" placeholder="Xác nhận lại mật khẩu">
+                    <div class="invalid-feedback" id="err-confirmPassword">Mật khẩu không trùng khớp.</div>
+                </div>
+            </div>
+
+
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px; margin-top: 12px; font-size: 16px;">
+                Đăng ký ngay
+            </button>
+
+            <div style="margin-top: 24px; text-align: center; font-size: 14px;">
+                <span style="color: var(--text-muted);">Đã có tài khoản?</span>
+                <a href="/login" style="color: var(--primary-light); text-decoration: none; font-weight: 600; margin-left: 6px;">Đăng nhập</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Registration Success Card (Hidden by default) -->
+    <div class="register-card" id="success-container" style="display: none; text-align: center;">
+        <i class="fa-solid fa-circle-check" style="color: var(--success); font-size: 64px; margin-bottom: 20px;"></i>
+        <h2 style="color: var(--text-white); margin-bottom: 8px;">ĐĂNG KÝ THÀNH CÔNG!</h2>
+        <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+            Chào mừng bạn gia nhập Smart Gym. Tài khoản đăng nhập của bạn đã được khởi tạo tự động.
+        </p>
+
+        <!-- Credentials box -->
+        <div style="background-color: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; margin-bottom: 30px; text-align: left;">
+            <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">THÔNG TIN TÀI KHOẢN ĐĂNG NHẬP</div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <span style="color: var(--text-muted);">Tên đăng nhập:</span>
+                <span style="font-weight: 700; color: var(--text-white);" id="display-username">--</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-muted);">Mật khẩu:</span>
+                <span style="font-weight: 700; color: var(--primary-light);">123456</span>
+            </div>
+        </div>
+
+        <a href="/login" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px;">
+            Đi tới trang đăng nhập
+        </a>
+    </div>
+
+    <!-- Client validation script -->
+    <script>
+        // Custom validation helper
+        function validateField(inputEl, condition, errElId) {
+            const errEl = document.getElementById(errElId);
+            if (condition) {
+                inputEl.classList.remove('is-invalid');
+                if (errEl) errEl.style.display = 'none';
+                return true;
+            } else {
+                inputEl.classList.add('is-invalid');
+                if (errEl) errEl.style.display = 'block';
+                return false;
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+
+            // Clear previous error messages
+            const errorAlert = document.getElementById('error-alert');
+            errorAlert.style.display = 'none';
+            errorAlert.textContent = '';
+
+            let isValid = true;
+
+            // 1. Validate Full Name
+            const fullNameEl = document.getElementById('fullName');
+            isValid = validateField(fullNameEl, fullNameEl.value.trim() !== '', 'err-fullName') && isValid;
+
+            // 2. Validate DOB
+            const dobEl = document.getElementById('dateOfBirth');
+            isValid = validateField(dobEl, dobEl.value !== '', 'err-dateOfBirth') && isValid;
+
+            // 3. Validate Phone (vietnamese 10 digits)
+            const phoneEl = document.getElementById('phone');
+            const phoneRegex = /^0[0-9]{9}$/;
+            isValid = validateField(phoneEl, phoneRegex.test(phoneEl.value.trim()), 'err-phone') && isValid;
+
+            // Validate Email
+            const emailEl = document.getElementById('email');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            isValid = validateField(emailEl, emailRegex.test(emailEl.value.trim()), 'err-email') && isValid;
+
+            // 4. Validate Password (length >= 6)
+            const passwordEl = document.getElementById('password');
+            isValid = validateField(passwordEl, passwordEl.value.length >= 6, 'err-password') && isValid;
+
+            // 5. Validate Confirm Password (must match password)
+            const confirmPasswordEl = document.getElementById('confirmPassword');
+            isValid = validateField(confirmPasswordEl, confirmPasswordEl.value === passwordEl.value, 'err-confirmPassword') && isValid;
+
+            if (!isValid) return;
+
+            // Send register POST request
+            const body = {
+                fullName: fullNameEl.value.trim(),
+                gender: document.getElementById('gender').value,
+                dateOfBirth: dobEl.value,
+                phone: phoneEl.value.trim(),
+                email: emailEl.value.trim(),
+                password: passwordEl.value
+            };
+
+            try {
+                const response = await fetch('/api/members', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('display-username').textContent = data.phone;
+                    
+                    // Toggle views
+                    document.getElementById('form-container').style.display = 'none';
+                    document.getElementById('success-container').style.display = 'block';
+                } else {
+                    let errMsg = "Thông tin đầu vào trùng lặp hoặc không hợp lệ.";
+                    try {
+                        const err = await response.json();
+                        errMsg = err.message || errMsg;
+                    } catch (e) {
+                        // Response is not JSON (e.g. Whitelabel Error Page)
+                    }
+                    errorAlert.textContent = "Đăng ký không thành công: " + errMsg;
+                    errorAlert.style.display = 'block';
+                }
+            } catch (error) {
+                console.error(error);
+                errorAlert.textContent = "Lỗi kết nối máy chủ. Vui lòng kiểm tra lại kết nối.";
+                errorAlert.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

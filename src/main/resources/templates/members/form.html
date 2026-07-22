@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/main :: head('Thông tin hội viên')}">
+</head>
+<body>
+    <div th:replace="~{layout/main :: layout(~{::content}, 'members')}">
+        <div th:fragment="content">
+            <!-- Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title" id="form-title">Thêm Hội viên mới</h1>
+                    <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Điền đầy đủ thông tin hội viên đăng ký tập luyện</p>
+                </div>
+                <a href="/members" class="btn btn-secondary">
+                    <i class="fa-solid fa-arrow-left-long"></i> Quay lại
+                </a>
+            </div>
+
+            <!-- Form Card -->
+            <div class="glass-card" style="max-width: 680px; margin: 0 auto;">
+                <form id="member-form" onsubmit="submitForm(event)" novalidate>
+                    <!-- General error message container -->
+                    <div class="alert-danger" id="error-alert" style="display: none; margin-bottom: 20px;"></div>
+
+                    <!-- Full Name -->
+                    <div class="form-group">
+                        <label for="fullName" class="form-label">Họ và tên <span style="color: var(--danger);">*</span></label>
+                        <input type="text" id="fullName" class="form-input" placeholder="Nhập họ và tên hội viên...">
+                        <div class="invalid-feedback" id="err-fullName">Vui lòng nhập họ và tên hội viên.</div>
+                    </div>
+
+                    <!-- Row 1: Gender & DOB -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label for="gender" class="form-label">Giới tính <span style="color: var(--danger);">*</span></label>
+                            <select id="gender" class="form-select">
+                                <option value="MALE">Nam (MALE)</option>
+                                <option value="FEMALE">Nữ (FEMALE)</option>
+                                <option value="OTHER">Khác (OTHER)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="dateOfBirth" class="form-label">Ngày sinh <span style="color: var(--danger);">*</span></label>
+                            <input type="date" id="dateOfBirth" class="form-input">
+                            <div class="invalid-feedback" id="err-dateOfBirth">Vui lòng nhập ngày sinh hội viên.</div>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Phone & Email -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label for="phone" class="form-label">Số điện thoại <span style="color: var(--danger);">*</span></label>
+                            <input type="tel" id="phone" class="form-input" placeholder="Nhập số điện thoại...">
+                            <div class="invalid-feedback" id="err-phone">Số điện thoại không hợp lệ (gồm 10 số).</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" id="email" class="form-input" placeholder="Nhập email...">
+                            <div class="invalid-feedback" id="err-email">Email không đúng định dạng.</div>
+                        </div>
+                    </div>
+
+                    <!-- Package Select (Only shown on Add mode) -->
+                    <div class="form-group" id="package-group">
+                        <label for="packageId" class="form-label">Chọn gói tập đăng ký</label>
+                        <select id="packageId" class="form-select">
+                            <option value="">Đang tải các gói tập hiện có...</option>
+                        </select>
+                    </div>
+
+                    <!-- Actions -->
+                    <div style="display: flex; justify-content: flex-end; gap: 16px; margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px;">
+                        <a href="/members" class="btn btn-secondary">Hủy bỏ</a>
+                        <button type="submit" class="btn btn-primary" id="btn-submit">
+                            Lưu thông tin
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Client Script -->
+            <script th:inline="javascript">
+                /*<![CDATA[*/
+                const isEdit = /*[[${isEdit}]]*/ false;
+                const memberId = /*[[${memberId}]]*/ null;
+                /*]]>*/
+
+                // Load packages if in Add mode
+                async function loadPackages() {
+                    if (isEdit) {
+                        document.getElementById('package-group').style.display = 'none';
+                        return;
+                    }
+
+                    const select = document.getElementById('packageId');
+                    try {
+                        const response = await fetch('/api/packages?size=100');
+                        if (response.ok) {
+                            const data = await response.json();
+                            select.innerHTML = '<option value="">-- Không đăng ký gói tập (Chọn sau) --</option>';
+                            data.content.forEach(pkg => {
+                                if (pkg.status === 'ACTIVE') {
+                                    select.innerHTML += `<option value="${pkg.id}">${pkg.packageName} (${pkg.duration} tháng - ${new Intl.NumberFormat('vi-VN').format(pkg.price)}đ)</option>`;
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                // Load member details if in Edit mode
+                async function loadMemberDetails() {
+                    if (!isEdit || !memberId) return;
+
+                    document.getElementById('form-title').textContent = 'Sửa thông tin hội viên';
+                    document.getElementById('btn-submit').textContent = 'Cập nhật';
+
+                    try {
+                        const response = await fetch(`/api/members/${memberId}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            document.getElementById('fullName').value = data.fullName;
+                            document.getElementById('gender').value = data.gender;
+                            document.getElementById('phone').value = data.phone;
+                            document.getElementById('email').value = data.email || '';
+                            
+                            // DOB format converter to yyyy-MM-dd
+                            if (data.dateOfBirth) {
+                                document.getElementById('dateOfBirth').value = data.dateOfBirth;
+                            }
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                // Custom validation helper
+                function validateField(inputEl, condition, errElId) {
+                    const errEl = document.getElementById(errElId);
+                    if (condition) {
+                        inputEl.classList.remove('is-invalid');
+                        if (errEl) errEl.style.display = 'none';
+                        return true;
+                    } else {
+                        inputEl.classList.add('is-invalid');
+                        if (errEl) errEl.style.display = 'block';
+                        return false;
+                    }
+                }
+
+                // Form submit handler
+                async function submitForm(event) {
+                    event.preventDefault();
+
+                    // Clear previous error messages
+                    const errorAlert = document.getElementById('error-alert');
+                    errorAlert.style.display = 'none';
+                    errorAlert.textContent = '';
+
+                    let isValid = true;
+                    
+                    const fullNameEl = document.getElementById('fullName');
+                    isValid = validateField(fullNameEl, fullNameEl.value.trim() !== '', 'err-fullName') && isValid;
+
+                    const dobEl = document.getElementById('dateOfBirth');
+                    isValid = validateField(dobEl, dobEl.value !== '', 'err-dateOfBirth') && isValid;
+
+                    const phoneEl = document.getElementById('phone');
+                    const phoneRegex = /^0[0-9]{9}$/;
+                    isValid = validateField(phoneEl, phoneRegex.test(phoneEl.value.trim()), 'err-phone') && isValid;
+
+                    const emailEl = document.getElementById('email');
+                    const emailVal = emailEl.value.trim();
+                    if (emailVal !== '') {
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        isValid = validateField(emailEl, emailRegex.test(emailVal), 'err-email') && isValid;
+                    } else {
+                        emailEl.classList.remove('is-invalid');
+                        const errEmail = document.getElementById('err-email');
+                        if (errEmail) errEmail.style.display = 'none';
+                    }
+
+                    let packageId = null;
+                    if (!isEdit) {
+                        const pkgEl = document.getElementById('packageId');
+                        packageId = pkgEl.value !== '' ? parseInt(pkgEl.value) : null;
+                    }
+
+                    if (!isValid) return;
+
+                    const fullName = fullNameEl.value.trim();
+                    const gender = document.getElementById('gender').value;
+                    const dateOfBirth = dobEl.value;
+                    const phone = phoneEl.value.trim();
+
+                    let body = { fullName, gender, dateOfBirth, phone, email: emailVal || null, address: null };
+                    let url = '/api/members';
+                    let method = 'POST';
+
+                    if (isEdit) {
+                        url = `/api/members/${memberId}`;
+                        method = 'PUT';
+                    } else {
+                        body.packageId = packageId;
+                    }
+
+                    try {
+                        const response = await fetch(url, {
+                            method: method,
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(body)
+                        });
+
+                        if (response.ok) {
+                            window.location.href = '/members';
+                        } else {
+                            let errMsg = "Không thể thực hiện yêu cầu.";
+                            try {
+                                const err = await response.json();
+                                errMsg = err.message || errMsg;
+                            } catch (e) {
+                                // Response is not JSON
+                            }
+                            errorAlert.textContent = "Lỗi: " + errMsg;
+                            errorAlert.style.display = 'block';
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        errorAlert.textContent = "Có lỗi kết nối hệ thống.";
+                        errorAlert.style.display = 'block';
+                    }
+                }
+
+                // Initial Load
+                document.addEventListener('DOMContentLoaded', () => {
+                    loadPackages();
+                    loadMemberDetails();
+                });
+            </script>
+        </div>
+    </div>
+</body>
+</html>

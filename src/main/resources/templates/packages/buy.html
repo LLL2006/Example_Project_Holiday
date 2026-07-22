@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{layout/main :: head('Đăng ký Gói tập')}">
+</head>
+<body>
+    <div th:replace="~{layout/main :: layout(~{::content}, 'buy-package')}">
+        <div th:fragment="content">
+            <!-- Custom CSS for Packages Buy view -->
+            <style>
+                .pkg-card-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 24px;
+                    margin-top: 24px;
+                }
+                .pkg-buy-card {
+                    background: var(--bg-card);
+                    border: 1px solid var(--border-color);
+                    border-radius: 16px;
+                    padding: 32px;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+                    display: flex;
+                    flex-direction: column;
+                    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                }
+                .pkg-buy-card:hover {
+                    transform: translateY(-6px);
+                    border-color: var(--primary-light);
+                    box-shadow: 0 12px 40px rgba(216, 27, 96, 0.15);
+                }
+                .pkg-buy-card::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 4px;
+                    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+                    opacity: 0.8;
+                }
+                .pkg-buy-card.vip::before {
+                    background: linear-gradient(90deg, #F59E0B, #8A2BE2);
+                }
+                .pkg-header {
+                    margin-bottom: 20px;
+                }
+                .pkg-name {
+                    font-size: 20px;
+                    font-weight: 700;
+                    color: var(--text-white);
+                    margin-bottom: 8px;
+                }
+                .pkg-price {
+                    font-size: 32px;
+                    font-weight: 800;
+                    color: var(--primary-light);
+                    display: flex;
+                    align-items: baseline;
+                    gap: 4px;
+                }
+                .pkg-price span {
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: var(--text-muted);
+                }
+                .pkg-divider {
+                    height: 1px;
+                    background: var(--border-color);
+                    margin: 16px 0;
+                }
+                .pkg-features {
+                    list-style: none;
+                    padding: 0;
+                    margin: 0 0 32px 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    flex-grow: 1;
+                }
+                .pkg-feature-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    font-size: 14px;
+                    color: var(--text-muted);
+                }
+                .pkg-feature-item i {
+                    color: var(--success);
+                    font-size: 16px;
+                }
+                .bank-info-box {
+                    background: rgba(255, 255, 255, 0.02);
+                    border: 1px dashed var(--border-color);
+                    border-radius: 8px;
+                    padding: 16px;
+                    margin-top: 16px;
+                }
+                .bank-detail-row {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 14px;
+                    margin-bottom: 8px;
+                }
+                .bank-detail-row:last-child {
+                    margin-bottom: 0;
+                }
+            </style>
+
+            <!-- Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Đăng ký Gói tập</h1>
+                    <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Lựa chọn và kích hoạt các gói tập Gym & PT chuyên nghiệp</p>
+                </div>
+            </div>
+
+            <!-- Role Selector Bar for Admin and Trainer -->
+            <div sec:authorize="hasAnyRole('ADMIN', 'TRAINER')" class="glass-card" style="padding: 24px; margin-bottom: 24px;">
+                <h3 style="font-size: 16px; font-weight: 600; color: var(--text-white); margin-bottom: 16px;">Thông tin đăng ký hộ</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+                    <!-- Select Member -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="member-select-buy" class="form-label">Chọn hội viên đăng ký <span style="color: var(--danger);">*</span></label>
+                        <select id="member-select-buy" class="form-select"></select>
+                        <div class="invalid-feedback" id="err-member-select-buy">Vui lòng chọn hội viên.</div>
+                    </div>
+
+                    <!-- Payment Status (Admin only) -->
+                    <div sec:authorize="hasRole('ADMIN')" class="form-group" style="margin-bottom: 0;">
+                        <label for="payment-status-buy" class="form-label">Trạng thái thanh toán <span style="color: var(--danger);">*</span></label>
+                        <select id="payment-status-buy" class="form-select">
+                            <option value="PAID">Thanh toán ngay (Kích hoạt luôn)</option>
+                            <option value="UNPAID">Chưa thanh toán (Chờ duyệt)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Package list grid -->
+            <div id="package-buy-grid" class="pkg-card-grid">
+                <!-- Loaded via AJAX -->
+                <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px;">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size: 28px; margin-bottom: 12px;"></i>
+                    <p>Đang tải danh sách các gói tập...</p>
+                </div>
+            </div>
+
+            <!-- Modal Confirm Purchase -->
+            <div id="buy-confirm-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
+                <div class="glass-card" style="width: 460px; padding: 32px; background-color: var(--bg-card);">
+                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: var(--text-white);" id="modal-title-buy">Đăng ký mua gói</h3>
+                    
+                    <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 24px;">
+                        Bạn đang tiến hành đăng ký gói tập: <strong id="modal-pkg-name" style="color: var(--text-white);">--</strong><br>
+                        Giá trị: <strong id="modal-pkg-price" style="color: var(--primary-light);">0đ</strong>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="buy-payment-method" class="form-label">Chọn phương thức thanh toán <span style="color: var(--danger);">*</span></label>
+                        <select id="buy-payment-method" class="form-select">
+                            <option value="BANK_TRANSFER">Chuyển khoản ngân hàng (BANK_TRANSFER)</option>
+                            <option value="CASH">Tiền mặt tại quầy (CASH)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="buy-note" class="form-label">Ghi chú</label>
+                        <input type="text" id="buy-note" class="form-input" placeholder="Ghi chú thêm...">
+                    </div>
+
+                    <!-- Webcam section for avatar capture -->
+                    <div style="margin-top: 16px; margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <label class="form-label" style="align-self: flex-start;">Chụp ảnh chân dung (Ảnh gốc đối chiếu) <span style="color: var(--danger);">*</span></label>
+                        
+                        <div style="position: relative; width: 100%; max-width: 200px; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background-color: #0d0614; border: 1px solid var(--border-color); display: flex; justify-content: center; align-items: center;">
+                            <video id="buy-webcam" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: none;"></video>
+                            <img id="buy-photo-preview" style="display: none; width: 100%; height: 100%; object-fit: cover;" alt="Portrait">
+                            <i id="buy-photo-placeholder" class="fa-solid fa-camera" style="font-size: 48px; color: var(--border-color);"></i>
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px; width: 100%; justify-content: center;">
+                            <button id="btn-start-buy-cam" onclick="startBuyCamera()" class="btn btn-secondary btn-sm" style="padding: 6px 12px;"><i class="fa-solid fa-video"></i> Bật camera</button>
+                            <button id="btn-capture-buy-photo" onclick="captureBuyPhoto()" class="btn btn-primary btn-sm" style="padding: 6px 12px; display: none;"><i class="fa-solid fa-camera"></i> Chụp ảnh</button>
+                            <button id="btn-retake-buy-photo" onclick="retakeBuyPhoto()" class="btn btn-secondary btn-sm" style="padding: 6px 12px; display: none;"><i class="fa-solid fa-camera-rotate"></i> Chụp lại</button>
+                        </div>
+                        
+                        <canvas id="buy-capture-canvas" style="display: none;" width="320" height="320"></canvas>
+                        <div class="invalid-feedback" id="err-buy-photo" style="display: none; text-align: center;">Vui lòng chụp ảnh chân dung để làm dữ liệu đối chiếu.</div>
+                    </div>
+
+
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px;">
+                        <button onclick="closeBuyModal()" class="btn btn-secondary btn-sm">Hủy</button>
+                        <button onclick="submitBuyPackage()" class="btn btn-primary btn-sm">Xác nhận</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Bank Transfer details on UNPAID Success -->
+            <div id="transfer-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1001; align-items: center; justify-content: center;">
+                <div class="glass-card" style="width: 500px; padding: 32px; background-color: var(--bg-card);">
+                    <div style="text-align: center; color: var(--success); font-size: 40px; margin-bottom: 16px;">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <h3 style="text-align: center; font-size: 20px; font-weight: 600; margin-bottom: 8px; color: var(--text-white);">Đăng ký gói thành công!</h3>
+                    <p style="text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">Hóa đơn của bạn đã được tạo ở trạng thái chờ duyệt. Vui lòng thanh toán theo thông tin bên dưới để kích hoạt tài khoản.</p>
+
+                    <div class="bank-info-box">
+                        <div class="bank-detail-row">
+                            <span style="color: var(--text-muted);">Mã hóa đơn:</span>
+                            <strong style="color: var(--primary-light);" id="success-invoice-code">HD000</strong>
+                        </div>
+                        <div class="bank-detail-row">
+                            <span style="color: var(--text-muted);">Số tiền chuyển:</span>
+                            <strong style="color: var(--text-white);" id="success-amount">0đ</strong>
+                        </div>
+                        <div class="bank-detail-row">
+                            <span style="color: var(--text-muted);">Tên ngân hàng:</span>
+                            <strong style="color: var(--text-white);">MB Bank (Ngân hàng Quân Đội)</strong>
+                        </div>
+                        <div class="bank-detail-row">
+                            <span style="color: var(--text-muted);">Số tài khoản:</span>
+                            <strong style="color: var(--warning); font-size: 16px;">123456789999</strong>
+                        </div>
+                        <div class="bank-detail-row">
+                            <span style="color: var(--text-muted);">Chủ tài khoản:</span>
+                            <strong style="color: var(--text-white);">PHONG TAP SMART GYM</strong>
+                        </div>
+                        <div class="bank-detail-row" style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
+                            <span style="color: var(--text-muted);">Nội dung CK:</span>
+                            <strong style="color: var(--success);" id="success-memo">EPH HD000</strong>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: center; margin-top: 28px;">
+                        <button onclick="closeTransferModal()" class="btn btn-primary" style="padding: 10px 32px;">Đã hiểu & Đóng</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Logic -->
+            <script th:inline="javascript">
+                /*<![CDATA[*/
+                const isMember = /*[[${#authorization.expression('hasRole("MEMBER")')}]]*/ false;
+                const isTrainer = /*[[${#authorization.expression('hasRole("TRAINER")')}]]*/ false;
+                const isAdmin = /*[[${#authorization.expression('hasRole("ADMIN")')}]]*/ false;
+                /*]]>*/
+
+
+
+                let selectedPackageId = null;
+
+                // Load packages
+                async function loadPackages() {
+                    const grid = document.getElementById('package-buy-grid');
+                    try {
+                        const response = await fetch('/api/packages?size=100');
+                        if (response.ok) {
+                            const data = await response.json();
+                            grid.innerHTML = '';
+                            const activePkgs = data.content.filter(p => p.status === 'ACTIVE');
+                            
+                            if (activePkgs.length === 0) {
+                                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px;">Không có gói tập nào đang hoạt động.</div>';
+                                return;
+                            }
+
+                            activePkgs.forEach(pkg => {
+                                const priceFmt = new Intl.NumberFormat('vi-VN').format(pkg.price);
+                                const isVip = pkg.packageName.toLowerCase().includes('vip') || pkg.ptSessions > 0;
+                                const vipClass = isVip ? 'vip' : '';
+                                
+                                const ptText = pkg.ptSessions > 0 
+                                    ? `<li class="pkg-feature-item"><i class="fa-solid fa-circle-check"></i><span>${pkg.ptSessions} ca tập cùng HLV cá nhân (PT)</span></li>`
+                                    : `<li class="pkg-feature-item"><i class="fa-solid fa-circle-check"></i><span>Tự do tập luyện không giới hạn</span></li>`;
+
+                                grid.innerHTML += `
+                                    <div class="pkg-buy-card ${vipClass}">
+                                        <div class="pkg-header">
+                                            <div class="pkg-name">${pkg.packageName}</div>
+                                            <div class="pkg-price">${priceFmt}đ <span>/ ${pkg.duration} tháng</span></div>
+                                        </div>
+                                        <div class="pkg-divider"></div>
+                                        <ul class="pkg-features">
+                                            <li class="pkg-feature-item">
+                                                <i class="fa-solid fa-circle-check"></i>
+                                                <span>Thời hạn sử dụng: ${pkg.duration} tháng</span>
+                                            </li>
+                                            ${ptText}
+                                            <li class="pkg-feature-item">
+                                                <i class="fa-solid fa-circle-check"></i>
+                                                <span>Tham gia các lớp Yoga/Zumba miễn phí</span>
+                                            </li>
+                                            <li class="pkg-feature-item">
+                                                <i class="fa-solid fa-circle-check"></i>
+                                                <span>Đầy đủ tiện ích (phòng tắm, tủ đồ)</span>
+                                            </li>
+                                        </ul>
+                                        <button onclick="confirmPurchase(${pkg.id}, '${pkg.packageName}', ${pkg.price})" class="btn ${isVip ? 'btn-primary' : 'btn-secondary'}" style="width: 100%; justify-content: center;">
+                                            <i class="fa-solid fa-cart-shopping"></i> Đăng ký ngay
+                                        </button>
+                                    </div>
+                                `;
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Lỗi khi tải gói tập:', error);
+                        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--danger); padding: 40px;">Không thể tải danh sách gói tập.</div>';
+                    }
+                }
+
+                // Load members list for Admin and Trainer selection
+                async function loadMembersBuySelect() {
+                    const select = document.getElementById('member-select-buy');
+                    if (!select) return;
+                    
+                    try {
+                        const response = await fetch('/api/members?size=300&all=true');
+                        if (response.ok) {
+                            const data = await response.json();
+                            select.innerHTML = '<option value="">-- Chọn hội viên --</option>';
+                            data.content.forEach(m => {
+                                select.innerHTML += `<option value="${m.id}">${m.fullName} (${m.phone})</option>`;
+                            });
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                function confirmPurchase(id, name, price) {
+                    // Check member selection if admin/trainer
+                    if (!isMember) {
+                        const select = document.getElementById('member-select-buy');
+                        if (select && select.value === '') {
+                            select.classList.add('is-invalid');
+                            document.getElementById('err-member-select-buy').style.display = 'block';
+                            select.scrollIntoView({ behavior: 'smooth' });
+                            return;
+                        }
+                    }
+
+                    selectedPackageId = id;
+                    document.getElementById('modal-pkg-name').textContent = name;
+                    document.getElementById('modal-pkg-price').textContent = new Intl.NumberFormat('vi-VN').format(price) + 'đ';
+                    document.getElementById('buy-confirm-modal').style.display = 'flex';
+                }
+
+                let buyWebcamStream = null;
+                let buyCapturedPhoto = null;
+
+                async function startBuyCamera() {
+                    const video = document.getElementById('buy-webcam');
+                    const placeholder = document.getElementById('buy-photo-placeholder');
+                    const preview = document.getElementById('buy-photo-preview');
+                    const btnStart = document.getElementById('btn-start-buy-cam');
+                    const btnCapture = document.getElementById('btn-capture-buy-photo');
+                    const btnRetake = document.getElementById('btn-retake-buy-photo');
+
+                    try {
+                        buyWebcamStream = await navigator.mediaDevices.getUserMedia({
+                            video: { width: 320, height: 320, facingMode: "user" }
+                        });
+                        video.srcObject = buyWebcamStream;
+                        video.style.display = 'block';
+                        placeholder.style.display = 'none';
+                        preview.style.display = 'none';
+                        
+                        btnStart.style.display = 'none';
+                        btnCapture.style.display = 'inline-block';
+                        btnRetake.style.display = 'none';
+                        document.getElementById('err-buy-photo').style.display = 'none';
+                    } catch (err) {
+                        console.error(err);
+                        showToast("Không thể khởi động camera.", "error");
+                    }
+                }
+
+                function stopBuyCamera() {
+                    if (buyWebcamStream) {
+                        buyWebcamStream.getTracks().forEach(track => track.stop());
+                        buyWebcamStream = null;
+                    }
+                }
+
+                function captureBuyPhoto() {
+                    const video = document.getElementById('buy-webcam');
+                    const canvas = document.getElementById('buy-capture-canvas');
+                    const preview = document.getElementById('buy-photo-preview');
+                    const ctx = canvas.getContext('2d');
+
+                    // Mirror image drawing
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+                    buyCapturedPhoto = canvas.toDataURL('image/jpeg', 0.85);
+                    preview.src = buyCapturedPhoto;
+                    preview.style.display = 'block';
+                    video.style.display = 'none';
+                    stopBuyCamera();
+
+                    document.getElementById('btn-capture-buy-photo').style.display = 'none';
+                    document.getElementById('btn-retake-buy-photo').style.display = 'inline-block';
+                    document.getElementById('err-buy-photo').style.display = 'none';
+                }
+
+                function retakeBuyPhoto() {
+                    buyCapturedPhoto = null;
+                    startBuyCamera();
+                }
+
+                function closeBuyModal() {
+                    stopBuyCamera();
+                    document.getElementById('buy-confirm-modal').style.display = 'none';
+                    selectedPackageId = null;
+                    buyCapturedPhoto = null;
+                    
+                    document.getElementById('buy-photo-preview').style.display = 'none';
+                    document.getElementById('buy-webcam').style.display = 'none';
+                    document.getElementById('buy-photo-placeholder').style.display = 'block';
+                    document.getElementById('btn-start-buy-cam').style.display = 'inline-block';
+                    document.getElementById('btn-capture-buy-photo').style.display = 'none';
+                    document.getElementById('btn-retake-buy-photo').style.display = 'none';
+                    document.getElementById('err-buy-photo').style.display = 'none';
+                }
+
+                async function submitBuyPackage() {
+                    if (!buyCapturedPhoto) {
+                        document.getElementById('err-buy-photo').style.display = 'block';
+                        showToast('Vui lòng bật camera và chụp ảnh chân dung trước khi xác nhận.', 'warning');
+                        return;
+                    }
+
+                    const paymentMethod = document.getElementById('buy-payment-method').value;
+                    const note = document.getElementById('buy-note').value;
+
+                    let memberId = null;
+                    if (!isMember) {
+                        memberId = document.getElementById('member-select-buy').value;
+                    }
+
+                    // Admin payment status option
+                    let paymentStatus = 'UNPAID';
+                    if (isAdmin) {
+                        paymentStatus = document.getElementById('payment-status-buy').value;
+                    }
+
+                    const bodyObj = {
+                        packageId: selectedPackageId,
+                        paymentMethod: paymentMethod,
+                        note: note,
+                        avatarBase64: buyCapturedPhoto
+                    };
+                    if (memberId) {
+                        bodyObj.memberId = memberId;
+                    }
+                    if (isAdmin) {
+                        bodyObj.paymentStatus = paymentStatus;
+                    }
+
+                    try {
+                        const response = await fetch('/api/payments', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(bodyObj)
+                        });
+
+                        if (response.ok) {
+                            const resData = await response.json();
+                            closeBuyModal();
+                            
+                            if (resData.paymentStatus === 'UNPAID') {
+                                // Show Bank Transfer modal
+                                document.getElementById('success-invoice-code').textContent = resData.invoiceCode;
+                                document.getElementById('success-amount').textContent = new Intl.NumberFormat('vi-VN').format(resData.amount) + 'đ';
+                                document.getElementById('success-memo').textContent = `EPH ${resData.invoiceCode}`;
+                                document.getElementById('transfer-modal').style.display = 'flex';
+                            } else {
+                                showToast('Đăng ký gói tập thành công! Gói tập đã được kích hoạt trực tiếp.', 'success');
+                                setTimeout(() => {
+                                    window.location.href = '/dashboard';
+                                }, 1500);
+                            }
+                        } else {
+                            const err = await response.json();
+                            showToast('Lỗi: ' + (err.message || 'Không thể đăng ký gói tập.'), 'error');
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        showToast('Lỗi kết nối máy chủ.', 'error');
+                    }
+                }
+
+                function closeTransferModal() {
+                    document.getElementById('transfer-modal').style.display = 'none';
+                    window.location.href = '/dashboard';
+                }
+
+                // Initialize selector error resetting
+                document.addEventListener('DOMContentLoaded', () => {
+                    loadPackages();
+                    
+                    const selectBuy = document.getElementById('member-select-buy');
+                    if (selectBuy) {
+                        loadMembersBuySelect();
+                        selectBuy.addEventListener('change', () => {
+                            selectBuy.classList.remove('is-invalid');
+                            document.getElementById('err-member-select-buy').style.display = 'none';
+                        });
+                    }
+                });
+            </script>
+        </div>
+    </div>
+</body>
+</html>

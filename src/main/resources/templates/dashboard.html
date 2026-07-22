@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/main :: head('Dashboard')}">
+</head>
+<body>
+    <div th:replace="~{layout/main :: layout(~{::content}, 'dashboard')}">
+        <div th:fragment="content">
+            <!-- Include Chart.js CDN -->
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+            <!-- Dashboard specific styles -->
+            <style>
+                .chart-card {
+                    background: var(--bg-card);
+                    border: 1px solid var(--border-color);
+                    border-radius: 12px;
+                    padding: 24px;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                }
+                .chart-card:hover {
+                    box-shadow: 0 8px 32px rgba(216, 27, 96, 0.08);
+                }
+                .op-list-item {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 12px 16px;
+                    background: rgba(255, 255, 255, 0.01);
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    transition: background 0.2s, transform 0.2s;
+                }
+                .op-list-item:hover {
+                    background: rgba(255, 255, 255, 0.03);
+                    transform: translateX(4px);
+                }
+                .list-container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+                /* Custom Scrollbar for inner boxes */
+                .scrollbox {
+                    max-height: 280px;
+                    overflow-y: auto;
+                    padding-right: 6px;
+                }
+                .scrollbox::-webkit-scrollbar {
+                    width: 4px;
+                }
+                .scrollbox::-webkit-scrollbar-thumb {
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 2px;
+                }
+                .scrollbox::-webkit-scrollbar-thumb:hover {
+                    background: var(--primary-light);
+                }
+            </style>
+
+            <!-- Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Dashboard</h1>
+                    <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">
+                        Thống kê tổng quan hoạt động phòng tập
+                    </p>
+                </div>
+                <div class="btn btn-secondary">
+                    <i class="fa-solid fa-clock"></i>
+                    <span id="current-time">--:--:--</span>
+                </div>
+            </div>
+
+            <!-- ADMIN VIEW -->
+            <div sec:authorize="hasRole('ADMIN')">
+                <!-- Stats Grid -->
+                <div class="dashboard-grid">
+                    <!-- Present Count -->
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.12); color: var(--success); border-color: rgba(16, 185, 129, 0.2);">
+                            <i class="fa-solid fa-person-walking-luggage"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="val-present">0</div>
+                            <div class="stat-label">Hội viên tại phòng</div>
+                        </div>
+                    </div>
+
+                    <!-- Total Members -->
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="val-total-members">0</div>
+                            <div class="stat-label">Tổng hội viên</div>
+                        </div>
+                    </div>
+
+                    <!-- Active / Expired Breakdown -->
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.12); color: var(--warning); border-color: rgba(245, 158, 11, 0.2);">
+                            <i class="fa-solid fa-user-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div style="display: flex; gap: 16px;">
+                                <div>
+                                    <div class="stat-value" style="font-size: 22px; color: var(--success);" id="val-active-members">0</div>
+                                    <div class="stat-label" style="font-size: 11px;">Hoạt động</div>
+                                </div>
+                                <div style="border-left: 1px solid var(--border-color); padding-left: 16px;">
+                                    <div class="stat-value" style="font-size: 22px; color: var(--danger);" id="val-expired-members">0</div>
+                                    <div class="stat-label" style="font-size: 11px;">Hết hạn</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Revenue -->
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon" style="background-color: rgba(216, 27, 96, 0.12); color: var(--primary-light); border-color: rgba(216, 27, 96, 0.2);">
+                            <i class="fa-solid fa-money-bill-trend-up"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" style="font-size: 22px;" id="val-revenue">0đ</div>
+                            <div class="stat-label">Doanh thu tháng</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lower Grid -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                    <!-- Left Region (Wide Column) -->
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        
+                        <!-- Revenue line chart -->
+                        <div class="chart-card">
+                            <h3 style="font-size: 16px; font-weight: 600; color: var(--text-white); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-chart-line" style="color: var(--primary-light);"></i>
+                                Biểu đồ doanh thu theo các tháng
+                            </h3>
+                            <div style="position: relative; height: 320px; width: 100%;">
+                                <canvas id="admin-revenue-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Check-in Peaks & Package ratios side-by-side -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                            <div class="chart-card">
+                                <h3 style="font-size: 15px; font-weight: 600; color: var(--text-white); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-solid fa-clock" style="color: var(--warning);"></i>
+                                    Giờ cao điểm Check-in (30 ngày)
+                                </h3>
+                                <div style="position: relative; height: 230px; width: 100%;">
+                                    <canvas id="admin-checkin-hour-chart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="chart-card">
+                                <h3 style="font-size: 15px; font-weight: 600; color: var(--text-white); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-solid fa-chart-pie" style="color: var(--success);"></i>
+                                    Tỉ lệ đăng ký Gói tập
+                                </h3>
+                                <div style="position: relative; height: 230px; width: 100%;">
+                                    <canvas id="admin-package-pie-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Operational stats & check-ins -->
+                        <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px;">
+                            <!-- Operational stats summary -->
+                            <div class="chart-card">
+                                <h3 style="font-size: 15px; font-weight: 600; color: var(--text-white); margin-bottom: 16px;">
+                                    Số liệu vận hành tháng này
+                                </h3>
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-color);">
+                                        <span style="color: var(--text-muted); font-size: 13px;">Lịch PT hôm nay:</span>
+                                        <span id="val-today-pt" style="font-weight: 600; color: var(--primary-light); font-size: 15px;">0 ca</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-color);">
+                                        <span style="color: var(--text-muted); font-size: 13px;">Đăng ký lớp hôm nay:</span>
+                                        <span id="val-today-class" style="font-weight: 600; color: var(--success); font-size: 15px;">0 lượt</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-color);">
+                                        <span style="color: var(--text-muted); font-size: 13px;">Hội viên mới tháng này:</span>
+                                        <span id="val-new-members" style="font-weight: 600; color: var(--text-white); font-size: 15px;">0</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-color);">
+                                        <span style="color: var(--text-muted); font-size: 13px;">Tỷ lệ gia hạn gói:</span>
+                                        <span id="val-renewal-rate" style="font-weight: 600; color: var(--warning); font-size: 15px;">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Recent check-ins list -->
+                            <div class="chart-card">
+                                <h3 style="font-size: 15px; font-weight: 600; color: var(--text-white); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-solid fa-right-to-bracket" style="color: var(--success);"></i>
+                                    Quét thẻ ra vào gần nhất
+                                </h3>
+                                <div class="table-container" style="max-height: 180px; overflow-y: auto;">
+                                    <table class="custom-table" style="font-size: 13px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Mã HV</th>
+                                                <th>Hội viên</th>
+                                                <th>Giờ vào</th>
+                                                <th>Gói tập</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-checkins-body">
+                                            <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Đang tải...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Right Region (Narrow Column) -->
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        
+                        <!-- Trainer count card -->
+                        <div class="glass-card" style="display: flex; align-items: center; gap: 16px; padding: 20px;">
+                            <div class="stat-icon" style="width: 48px; height: 48px; font-size: 18px;">
+                                <i class="fa-solid fa-user-tie"></i>
+                            </div>
+                            <div>
+                                <div class="stat-value" style="font-size: 20px;" id="val-trainers">0</div>
+                                <div class="stat-label" style="font-size: 12px;">Huấn luyện viên (PT)</div>
+                            </div>
+                        </div>
+
+                        <!-- Packages count card -->
+                        <div class="glass-card" style="display: flex; align-items: center; gap: 16px; padding: 20px;">
+                            <div class="stat-icon" style="width: 48px; height: 48px; font-size: 18px; background-color: rgba(138, 43, 226, 0.12); color: #8A2BE2; border-color: rgba(138, 43, 226, 0.2);">
+                                <i class="fa-solid fa-box-archive"></i>
+                            </div>
+                            <div>
+                                <div class="stat-value" style="font-size: 20px;" id="val-packages">0</div>
+                                <div class="stat-label" style="font-size: 12px;">Gói tập hiện có</div>
+                            </div>
+                        </div>
+
+                        <!-- Expiring warning card -->
+                        <div class="chart-card" style="border-color: rgba(239,68,68,0.2);">
+                            <h3 style="font-size: 15px; font-weight: 600; color: var(--danger); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                Cảnh báo hết hạn (7 ngày)
+                            </h3>
+                            <div id="admin-expiring-box" class="list-container scrollbox">
+                                <div style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 10px;">Đang tải...</div>
+                            </div>
+                        </div>
+
+                        <!-- PT appointments today -->
+                        <div class="chart-card">
+                            <h3 style="font-size: 15px; font-weight: 600; color: var(--text-white); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-calendar-days" style="color: var(--primary-light);"></i>
+                                Lịch hẹn PT Hôm nay
+                            </h3>
+                            <div id="admin-pt-appointments-box" class="list-container scrollbox">
+                                <div style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 10px;">Đang tải...</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- TRAINER VIEW -->
+            <div sec:authorize="hasRole('TRAINER')">
+                <!-- Stats Grid -->
+                <div class="dashboard-grid">
+                    <!-- Total Assigned Members -->
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="trainer-total-members">0</div>
+                            <div class="stat-label">Học viên phụ trách</div>
+                        </div>
+                    </div>
+
+                    <!-- Taught Sessions -->
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.12); color: var(--success); border-color: rgba(16, 185, 129, 0.2);">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="trainer-completed-sessions">0</div>
+                            <div class="stat-label">Số ca dạy đã hoàn thành</div>
+                        </div>
+                    </div>
+
+                    <!-- Scheduled Sessions -->
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.12); color: var(--warning); border-color: rgba(245, 158, 11, 0.2);">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="trainer-scheduled-sessions">0</div>
+                            <div class="stat-label">Lịch dạy sắp tới</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lower split layout -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-top: 24px;">
+                    <!-- Today PT Appointments to teach -->
+                    <div class="chart-card">
+                        <h3 style="font-size: 16px; font-weight: 600; color: var(--text-white); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-calendar-day" style="color: var(--primary-light);"></i>
+                            Ca dạy PT hôm nay của bạn
+                        </h3>
+                        <div class="table-container">
+                            <table class="custom-table" style="font-size: 13px;">
+                                <thead>
+                                    <tr>
+                                        <th>Học viên</th>
+                                        <th>Số điện thoại</th>
+                                        <th>Thời gian dạy</th>
+                                        <th>Trạng thái</th>
+                                        <th style="text-align: right;">Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="trainer-pt-appointments-body">
+                                    <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">Đang tải...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Recently Assigned Students -->
+                    <div class="chart-card">
+                        <h3 style="font-size: 15px; font-weight: 600; color: var(--text-white); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-user-plus" style="color: var(--success);"></i>
+                            Học viên mới được giao
+                        </h3>
+                        <div id="trainer-new-members-box" class="list-container scrollbox">
+                            <div style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 10px;">Đang tải...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MEMBER VIEW -->
+            <div sec:authorize="hasRole('MEMBER')">
+                <div class="dashboard-grid">
+                    <!-- Current Gym Package -->
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon" style="background-color: rgba(216, 27, 96, 0.12); color: var(--primary-light); border-color: rgba(216, 27, 96, 0.2);">
+                            <i class="fa-solid fa-box-archive"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="member-package" style="font-size: 20px;">--</div>
+                            <div class="stat-label">Gói tập đăng ký</div>
+                        </div>
+                    </div>
+
+                    <!-- Expiry Date -->
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.12); color: var(--warning); border-color: rgba(245, 158, 11, 0.2);">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="member-expire" style="font-size: 20px;">--</div>
+                            <div class="stat-label">Ngày hết hạn</div>
+                        </div>
+                    </div>
+
+                    <!-- Member Status -->
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.12); color: var(--success); border-color: rgba(16, 185, 129, 0.2);">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="member-status" style="font-size: 20px;">--</div>
+                            <div class="stat-label">Trạng thái thẻ</div>
+                        </div>
+                    </div>
+
+                    <!-- Remaining PT Sessions -->
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon" style="background-color: rgba(138, 43, 226, 0.12); color: #8A2BE2; border-color: rgba(138, 43, 226, 0.2);">
+                            <i class="fa-solid fa-dumbbell"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="member-pt-sessions" style="font-size: 20px;">--</div>
+                            <div class="stat-label">Buổi PT còn lại</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-top: 24px;">
+                    <!-- Left: Upcoming schedule & check-ins -->
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        
+                        <!-- Upcoming schedule list -->
+                        <div class="chart-card">
+                            <h3 style="font-size: 16px; font-weight: 600; color: var(--text-white); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-calendar-check" style="color: var(--primary-light);"></i>
+                                Lịch tập sắp tới của bạn
+                            </h3>
+                            <div class="table-container">
+                                <table class="custom-table" style="font-size: 13px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Loại hình</th>
+                                            <th>Nội dung tập / PT</th>
+                                            <th>Thời gian bắt đầu</th>
+                                            <th>Phòng / Trạng thái</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="member-upcoming-schedule">
+                                        <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 15px;">Đang tải...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Check-in Log Table -->
+                        <div class="chart-card">
+                            <h3 style="font-size: 16px; font-weight: 600; color: var(--text-white); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-clock-rotate-left" style="color: var(--warning);"></i>
+                                Lịch sử ra vào phòng tập của bạn
+                            </h3>
+                            <div class="table-container">
+                                <table class="custom-table" style="font-size: 13px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Ngày tập</th>
+                                            <th>Giờ vào</th>
+                                            <th>Giờ ra</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="member-checkin-list">
+                                        <tr>
+                                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 20px;">Đang tải dữ liệu...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: PT Info card & progress tracker -->
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        <div class="chart-card" style="padding: 24px;">
+                            <h3 style="font-size: 16px; font-weight: 600; color: var(--text-white); margin-bottom: 16px;">Huấn luyện viên (PT) cá nhân</h3>
+                            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                                <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 50%; font-size: 20px;">
+                                    <i class="fa-solid fa-user-tie"></i>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-white);" id="member-pt-name">Chưa gán PT</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">PT cá nhân đồng hành</div>
+                                </div>
+                            </div>
+
+                            <!-- Sessions Progress indicator -->
+                            <div id="member-pt-progress-container" style="display: none; margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-color);">
+                                <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+                                    <span>Đã tập: <strong id="member-pt-used" style="color: var(--success); font-size: 13px;">0</strong></span>
+                                    <span>Còn lại: <strong id="member-pt-left" style="color: var(--primary-light); font-size: 13px;">0</strong></span>
+                                </div>
+                                <div style="height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; display: flex; margin-bottom: 6px;">
+                                    <div id="member-pt-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--success), var(--primary-light)); border-radius: 4px; transition: width 0.6s ease;"></div>
+                                </div>
+                                <div id="member-pt-total-text" style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 4px;">Tổng số buổi: 0 buổi</div>
+                            </div>
+
+                            <a href="/bookings" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                                <i class="fa-solid fa-calendar-check"></i> Đặt lịch tập ngay
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page scripts -->
+            <script th:inline="javascript">
+                // Clock widget
+                function updateClock() {
+                    const now = new Date();
+                    const timeString = now.toLocaleTimeString('vi-VN');
+                    document.getElementById('current-time').textContent = timeString;
+                }
+                setInterval(updateClock, 1000);
+                updateClock();
+
+                // Admin Charts declarations
+                let revenueChartInstance = null;
+                let checkInChartInstance = null;
+                let packageChartInstance = null;
+
+                function renderAdminCharts(data) {
+                    // Line chart for monthly revenue
+                    const revCtx = document.getElementById('admin-revenue-chart');
+                    if (revCtx) {
+                        const labels = data.revenueChartData.map(d => d.label);
+                        const values = data.revenueChartData.map(d => d.value);
+
+                        if (revenueChartInstance) revenueChartInstance.destroy();
+                        revenueChartInstance = new Chart(revCtx, {
+                            type: 'line',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Doanh thu (VND)',
+                                    data: values,
+                                    borderColor: '#D81B60',
+                                    backgroundColor: 'rgba(216, 27, 96, 0.05)',
+                                    borderWidth: 3,
+                                    fill: true,
+                                    tension: 0.35,
+                                    pointBackgroundColor: '#F59E0B',
+                                    pointBorderColor: '#FFF',
+                                    pointRadius: 4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false }
+                                },
+                                scales: {
+                                    y: {
+                                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                        ticks: {
+                                            color: '#9D99A9',
+                                            callback: function(val) {
+                                                return new Intl.NumberFormat('vi-VN').format(val) + 'đ';
+                                            }
+                                        }
+                                    },
+                                    x: {
+                                        grid: { display: false },
+                                        ticks: { color: '#9D99A9' }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // Bar chart for peak hours check-in
+                    const hourCtx = document.getElementById('admin-checkin-hour-chart');
+                    if (hourCtx) {
+                        const labels = data.checkInHourChartData.map(d => d.label);
+                        const values = data.checkInHourChartData.map(d => d.value);
+
+                        if (checkInChartInstance) checkInChartInstance.destroy();
+                        checkInChartInstance = new Chart(hourCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Số khách',
+                                    data: values,
+                                    backgroundColor: 'rgba(245, 158, 11, 0.75)',
+                                    borderColor: '#F59E0B',
+                                    borderWidth: 1,
+                                    borderRadius: 4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false }
+                                },
+                                scales: {
+                                    y: {
+                                        grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                                        ticks: { color: '#9D99A9', stepSize: 1 }
+                                    },
+                                    x: {
+                                        grid: { display: false },
+                                        ticks: { color: '#9D99A9', font: { size: 10 } }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // Pie Chart for package ratio
+                    const pkgCtx = document.getElementById('admin-package-pie-chart');
+                    if (pkgCtx) {
+                        const labels = data.topPackages.map(d => d.packageName);
+                        const values = data.topPackages.map(d => d.count);
+
+                        if (packageChartInstance) packageChartInstance.destroy();
+                        packageChartInstance = new Chart(pkgCtx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    data: values,
+                                    backgroundColor: [
+                                        '#D81B60',
+                                        '#10B981',
+                                        '#F59E0B',
+                                        '#8A2BE2',
+                                        '#3B82F6'
+                                    ],
+                                    borderWidth: 1,
+                                    borderColor: '#191423'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'right',
+                                        labels: {
+                                            color: '#9D99A9',
+                                            font: { size: 11 },
+                                            boxWidth: 12
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+
+                // Load Stats for Admin
+                async function loadAdminStats() {
+                    try {
+                        const response = await fetch('/api/dashboard');
+                        if (response.ok) {
+                            const data = await response.json();
+                            document.getElementById('val-present').textContent = data.membersPresent;
+                            document.getElementById('val-total-members').textContent = data.totalMembers;
+                            document.getElementById('val-active-members').textContent = data.activeMembers;
+                            document.getElementById('val-expired-members').textContent = data.expiredMembers;
+                            document.getElementById('val-trainers').textContent = data.totalTrainers;
+                            document.getElementById('val-packages').textContent = data.totalPackages;
+                            
+                            // Format currency
+                            const valRevenue = document.getElementById('val-revenue');
+                            if (valRevenue) {
+                                const revenue = data.monthlyRevenue || 0;
+                                valRevenue.textContent = new Intl.NumberFormat('vi-VN', {
+                                    style: 'currency',
+                                    currency: 'VND',
+                                    maximumFractionDigits: 0
+                                }).format(revenue);
+                            }
+
+                            // Render chart.js plots
+                            renderAdminCharts(data);
+
+                            // Load operational summary numbers
+                            document.getElementById('val-today-pt').textContent = data.todayPtBookings + " ca";
+                            document.getElementById('val-today-class').textContent = data.todayClassBookings + " lượt";
+                            document.getElementById('val-new-members').textContent = data.newMembersThisMonth;
+                            document.getElementById('val-renewal-rate').textContent = data.renewalRate + "%";
+
+                            // Load Recent Checkins list
+                            const checkinsBody = document.getElementById('admin-checkins-body');
+                            checkinsBody.innerHTML = '';
+                            if (data.recentCheckIns.length === 0) {
+                                checkinsBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Không có quét thẻ hôm nay.</td></tr>';
+                            } else {
+                                data.recentCheckIns.forEach(log => {
+                                    checkinsBody.innerHTML += `
+                                        <tr>
+                                            <td style="font-weight: 600;">${log.memberCode}</td>
+                                            <td>${log.fullName}</td>
+                                            <td style="color: var(--success);">${log.checkInTime}</td>
+                                            <td><span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-primary); font-size:11px;">${log.packageName}</span></td>
+                                        </tr>
+                                    `;
+                                });
+                            }
+
+                            // Load Expiring Warn Members
+                            const expiringBox = document.getElementById('admin-expiring-box');
+                            expiringBox.innerHTML = '';
+                            if (data.expiringMembers.length === 0) {
+                                expiringBox.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 20px;">Không có hội viên sắp hết hạn.</div>';
+                            } else {
+                                data.expiringMembers.forEach(m => {
+                                    expiringBox.innerHTML += `
+                                        <div class="op-list-item">
+                                            <div>
+                                                <div style="font-weight: 600; color: var(--text-white); font-size:14px;">${m.fullName} (${m.memberCode})</div>
+                                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">SĐT: ${m.phone}</div>
+                                            </div>
+                                            <div style="text-align: right;">
+                                                <div style="font-size: 11px; color: var(--danger); font-weight:600;">Hạn: ${m.expireDate}</div>
+                                                <a href="tel:${m.phone}" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 10px; margin-top: 4px; display: inline-flex; align-items:center; gap: 4px;">
+                                                    <i class="fa-solid fa-phone" style="font-size:10px;"></i> Call
+                                                </a>
+                                            </div>
+                                        </div>
+                                    `;
+                                });
+                            }
+
+                            // Load today PT Appointments
+                            const appointmentsBox = document.getElementById('admin-pt-appointments-box');
+                            appointmentsBox.innerHTML = '';
+                            if (data.todayPtAppointments.length === 0) {
+                                appointmentsBox.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 20px;">Không có lịch PT hẹn hôm nay.</div>';
+                            } else {
+                                data.todayPtAppointments.forEach(ptb => {
+                                    let badgeClass = 'badge-pt-scheduled';
+                                    let badgeText = 'Chờ dạy';
+                                    if (ptb.status === 'COMPLETED') {
+                                        badgeClass = 'badge-pt-completed';
+                                        badgeText = 'Đã xong';
+                                    } else if (ptb.status === 'CANCELLED') {
+                                        badgeClass = 'badge-pt-cancelled';
+                                        badgeText = 'Đã hủy';
+                                    }
+
+                                    appointmentsBox.innerHTML += `
+                                        <div class="op-list-item">
+                                            <div>
+                                                <div style="font-weight: 600; color: var(--text-white); font-size:14px;">${ptb.memberName}</div>
+                                                <div style="font-size: 11px; color: var(--text-muted); margin-top:2px;">PT: ${ptb.trainerName}</div>
+                                            </div>
+                                            <div style="text-align: right; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                                                <span style="font-weight:600; color: var(--warning); font-size:13px;"><i class="fa-regular fa-clock"></i> ${ptb.sessionTime}</span>
+                                                <span class="custom-badge ${badgeClass}">${badgeText}</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                });
+                            }
+
+                        }
+                    } catch (error) {
+                        console.error('Lỗi khi tải số liệu thống kê:', error);
+                    }
+                }
+
+                // Load Stats for Trainer
+                async function loadTrainerStats() {
+                    try {
+                        const response = await fetch('/api/dashboard/trainer');
+                        if (response.ok) {
+                            const data = await response.json();
+                            document.getElementById('trainer-total-members').textContent = data.totalMembers;
+                            document.getElementById('trainer-completed-sessions').textContent = data.completedSessions;
+                            document.getElementById('trainer-scheduled-sessions').textContent = data.scheduledSessions;
+
+                            // Today's appointments for trainer
+                            const ptBody = document.getElementById('trainer-pt-appointments-body');
+                            ptBody.innerHTML = '';
+                            if (data.todayPtAppointments.length === 0) {
+                                ptBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">Không có ca dạy nào hôm nay.</td></tr>';
+                            } else {
+                                data.todayPtAppointments.forEach(ptb => {
+                                    let badge = '';
+                                    let actionBtns = '';
+                                    if (ptb.status === 'SCHEDULED') {
+                                        badge = '<span class="badge" style="background: rgba(245,158,11,0.12); color: var(--warning);">Lịch hẹn</span>';
+                                        actionBtns = `
+                                            <button class="btn btn-secondary btn-sm" onclick="completeTrainerPt(${ptb.id})" style="padding: 4px 8px; color: var(--success);"><i class="fa-solid fa-check"></i> Xong</button>
+                                            <button class="btn btn-secondary btn-sm" onclick="cancelTrainerPt(${ptb.id})" style="padding: 4px 8px; color: var(--danger);"><i class="fa-solid fa-xmark"></i> Hủy</button>
+                                        `;
+                                    } else if (ptb.status === 'COMPLETED') {
+                                        badge = '<span class="badge" style="background: rgba(16,185,129,0.12); color: var(--success);">Hoàn thành</span>';
+                                    } else {
+                                        badge = '<span class="badge" style="background: rgba(239,68,68,0.12); color: var(--danger);">Đã hủy</span>';
+                                    }
+
+                                    ptBody.innerHTML += `
+                                        <tr>
+                                            <td style="font-weight: 600; color: var(--text-white);">${ptb.memberName}</td>
+                                            <td>${ptb.memberPhone}</td>
+                                            <td style="font-weight:600; color: var(--warning);"><i class="fa-regular fa-clock"></i> ${ptb.sessionTime}</td>
+                                            <td>${badge}</td>
+                                            <td style="text-align: right; display:flex; gap:6px; justify-content: flex-end;">${actionBtns}</td>
+                                        </tr>
+                                    `;
+                                });
+                            }
+
+                            // New Assigned Members for Trainer
+                            const newBox = document.getElementById('trainer-new-members-box');
+                            newBox.innerHTML = '';
+                            if (data.newAssignedMembers.length === 0) {
+                                newBox.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 20px;">Không có học viên mới.</div>';
+                            } else {
+                                data.newAssignedMembers.forEach(m => {
+                                    newBox.innerHTML += `
+                                        <div class="op-list-item">
+                                            <div>
+                                                <div style="font-weight: 600; color: var(--text-white); font-size:14px;">${m.fullName}</div>
+                                                <div style="font-size: 12px; color: var(--text-muted); margin-top:2px;">Mã thẻ: ${m.memberCode} | SĐT: ${m.phone}</div>
+                                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display:inline-block; padding: 1px 6px; background:rgba(255,255,255,0.03); border-radius:4px;">Gói: ${m.packageName}</div>
+                                            </div>
+                                            <div style="text-align: right;">
+                                                <span style="font-size: 11px; color: var(--text-muted);">Gia nhập:</span>
+                                                <div style="font-size: 12px; color: var(--text-white); font-weight:600; margin-top:2px;">${m.joinDate}</div>
+                                            </div>
+                                        </div>
+                                    `;
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Lỗi khi tải số liệu thống kê HLV:', error);
+                    }
+                }
+
+                // PT booking completion and cancellation actions for Trainer dashboard
+                async function completeTrainerPt(id) {
+                    showConfirm("Xác nhận đã dạy hoàn thành ca tập này?", async () => {
+                        try {
+                            const response = await fetch(`/api/pt-bookings/${id}/complete`, { method: 'PUT' });
+                            if (response.ok) {
+                                loadTrainerStats();
+                            }
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    });
+                }
+
+                async function cancelTrainerPt(id) {
+                    showConfirm("Xác nhận hủy lịch dạy PT này?", async () => {
+                        try {
+                            const response = await fetch(`/api/pt-bookings/${id}/cancel`, { method: 'PUT' });
+                            if (response.ok) {
+                                loadTrainerStats();
+                            }
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    });
+                }
+
+                // Load Stats for Member
+                async function loadMemberDashboard() {
+                    try {
+                        // 1. Fetch Member Profile
+                        const resProfile = await fetch('/api/members/me');
+                        if (resProfile.ok) {
+                            const member = await resProfile.json();
+                            document.getElementById('member-package').textContent = member.packageName || 'Chưa đăng ký gói';
+                            document.getElementById('member-expire').textContent = member.expireDate ? new Date(member.expireDate).toLocaleDateString('vi-VN') : '--';
+                            
+                            let statusText = 'Ngừng tập';
+                            if (member.status === 'ACTIVE') statusText = 'Hoạt động';
+                            else if (member.status === 'EXPIRED') statusText = 'Hết hạn';
+                            else if (!member.packageName) statusText = 'Chờ kích hoạt';
+                            document.getElementById('member-status').textContent = statusText;
+                            
+                            document.getElementById('member-pt-name').textContent = member.trainerName || 'Chưa gán PT';
+                            
+                            const ptSessionsLeft = member.remainingPtSessions !== null ? member.remainingPtSessions : 0;
+                            const activeBookings = member.activePtBookingsCount !== null ? member.activePtBookingsCount : 0;
+                            const availableToBook = Math.max(0, ptSessionsLeft - activeBookings);
+                            document.getElementById('member-pt-sessions').textContent = `${availableToBook} (Chờ tập: ${activeBookings})`;
+
+                            // Render progress indicator if they have PT package sessions
+                            const totalPtSessions = member.totalPtSessions !== null ? member.totalPtSessions : 0;
+                            const progressContainer = document.getElementById('member-pt-progress-container');
+                            if (progressContainer && totalPtSessions > 0) {
+                                progressContainer.style.display = 'block';
+                                const used = totalPtSessions - ptSessionsLeft;
+                                document.getElementById('member-pt-used').textContent = used;
+                                document.getElementById('member-pt-left').textContent = `${availableToBook} (Chờ tập: ${activeBookings})`;
+                                document.getElementById('member-pt-total-text').textContent = `Tổng số buổi trong gói: ${totalPtSessions} buổi`;
+                                
+                                const pct = (used * 100) / totalPtSessions;
+                                document.getElementById('member-pt-progress-bar').style.width = Math.min(pct, 100) + '%';
+                            }
+                        }
+
+                        // 2. Load Upcoming bookings (Class & PT combined)
+                        loadMemberUpcomingSchedule();
+
+                        // 3. Fetch Check-in Logs
+                        const resLogs = await fetch('/api/checkin/my-logs');
+                        if (resLogs.ok) {
+                            const logs = await resLogs.json();
+                            const listBody = document.getElementById('member-checkin-list');
+                            listBody.innerHTML = '';
+                            if (logs.length === 0) {
+                                listBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có lịch sử check-in nào.</td></tr>';
+                                return;
+                            }
+
+                            // Show last 5 check-ins
+                            logs.slice(0, 5).forEach(log => {
+                                const date = new Date(log.checkInTime).toLocaleDateString('vi-VN');
+                                const timeIn = new Date(log.checkInTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                                const timeOut = log.checkOutTime 
+                                    ? new Date(log.checkOutTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                                    : '<span class="badge badge-active" style="padding: 2px 6px; font-size: 11px;">Đang ở phòng</span>';
+
+                                listBody.innerHTML += `
+                                    <tr>
+                                        <td>${date}</td>
+                                        <td>${timeIn}</td>
+                                        <td>${timeOut}</td>
+                                    </tr>
+                                `;
+                            });
+                        }
+                    } catch (e) {
+                        console.error("Lỗi khi tải dữ liệu hội viên:", e);
+                    }
+                }
+
+                // Helper to load and merge future class and PT bookings for member dashboard
+                async function loadMemberUpcomingSchedule() {
+                    const tbody = document.getElementById('member-upcoming-schedule');
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Đang tải lịch tập...</td></tr>';
+                    
+                    try {
+                        const [resClass, resPt] = await Promise.all([
+                            fetch('/api/class-bookings'),
+                            fetch('/api/pt-bookings')
+                        ]);
+
+                        let list = [];
+                        const now = new Date();
+
+                        if (resClass.ok) {
+                            const classBookings = await resClass.json();
+                            classBookings.forEach(cb => {
+                                if (cb.status !== 'CANCELLED') {
+                                    const startTime = new Date(cb.classSchedule.startTime);
+                                    if (startTime >= now) {
+                                        list.push({
+                                            type: 'CLASS',
+                                            title: `Lớp: ${cb.classSchedule.gymClass.className}`,
+                                            time: startTime,
+                                            info: `Phòng ${cb.classSchedule.room || 'A'}`,
+                                            status: cb.status === 'ATTENDED' ? 'Đã tham gia' : 'Đã đăng ký'
+                                        });
+                                    }
+                                }
+                            });
+                        }
+
+                        if (resPt.ok) {
+                            const ptBookings = await resPt.json();
+                            ptBookings.forEach(pb => {
+                                if (pb.status !== 'CANCELLED') {
+                                    const sessionTime = new Date(pb.sessionTime);
+                                    if (sessionTime >= now) {
+                                        list.push({
+                                            type: 'PT',
+                                            title: `Tập với PT: ${pb.trainer.fullName}`,
+                                            time: sessionTime,
+                                            info: pb.status === 'COMPLETED' ? 'Hoàn thành' : 'Chờ tập',
+                                            status: pb.status === 'COMPLETED' ? 'Hoàn thành' : 'Đã hẹn'
+                                        });
+                                    }
+                                }
+                            });
+                        }
+
+                        // Sort chronological
+                        list.sort((a, b) => a.time - b.time);
+
+                        tbody.innerHTML = '';
+                        if (list.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 15px;">Bạn không có lịch tập nào sắp tới.</td></tr>';
+                            return;
+                        }
+
+                        // Take first 5 upcoming sessions
+                        list.slice(0, 5).forEach(item => {
+                            let typeBadge = item.type === 'CLASS' 
+                                ? '<span class="badge" style="background: rgba(16,185,129,0.12); color: var(--success); font-size:11px;"><i class="fa-solid fa-users"></i> Lớp nhóm</span>'
+                                : '<span class="badge" style="background: rgba(216,27,96,0.12); color: var(--primary-light); font-size:11px;"><i class="fa-solid fa-user"></i> PT cá nhân</span>';
+
+                            let roomOrStatus = item.type === 'CLASS'
+                                ? `<span>${item.info}</span>`
+                                : `<span class="badge badge-expired" style="font-size:11px;">${item.info}</span>`;
+
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>${typeBadge}</td>
+                                    <td style="font-weight: 600; color: var(--text-white);">${item.title}</td>
+                                    <td style="color: var(--warning); font-weight:600;"><i class="fa-regular fa-clock"></i> ${item.time.toLocaleString('vi-VN')}</td>
+                                    <td>${roomOrStatus}</td>
+                                </tr>
+                            `;
+                        });
+
+                    } catch (error) {
+                        console.error('Error combining schedule:', error);
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--danger);">Không thể tải lịch tập.</td></tr>';
+                    }
+                }
+                
+                // Initial load selector
+                document.addEventListener('DOMContentLoaded', () => {
+                    if (document.getElementById('val-present')) {
+                        loadAdminStats();
+                    } else if (document.getElementById('trainer-total-members')) {
+                        loadTrainerStats();
+                    } else if (document.getElementById('member-package')) {
+                        loadMemberDashboard();
+                    }
+                });
+            </script>
+        </div>
+    </div>
+</body>
+</html>

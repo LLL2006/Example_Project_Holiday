@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/main :: head('Quản lý Lớp học & Lịch học')}">
+</head>
+<body>
+    <div th:replace="~{layout/main :: layout(~{::content}, 'schedules')}">
+        <div th:fragment="content">
+            <!-- Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Quản lý Lớp học & Lịch học</h1>
+                    <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Quản lý các lớp học nhóm và thời khóa biểu của phòng tập</p>
+                </div>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <button onclick="switchTab('classes')" id="tab-btn-classes" class="btn btn-primary" style="padding: 8px 16px;">
+                    <i class="fa-solid fa-graduation-cap"></i> Danh sách Lớp học
+                </button>
+                <button onclick="switchTab('schedules')" id="tab-btn-schedules" class="btn btn-outline" style="padding: 8px 16px;">
+                    <i class="fa-solid fa-calendar-days"></i> Lịch học lớp nhóm
+                </button>
+            </div>
+
+            <!-- Tab 1: Lớp học -->
+            <div id="tab-content-classes">
+                <div class="glass-card" style="padding: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                    <h3 style="font-size: 18px; font-weight: 600; color: var(--text-white);">Quản lý lớp học nhóm</h3>
+                    <button onclick="openClassModal()" class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i> Thêm lớp học
+                    </button>
+                </div>
+
+                <div class="glass-card" style="padding: 0;">
+                    <div style="overflow-x: auto;">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Tên lớp học</th>
+                                    <th>PT/HLV phụ trách</th>
+                                    <th style="text-align: center;">Số chỗ (Sức chứa)</th>
+                                    <th>Trạng thái</th>
+                                    <th style="text-align: right; padding-right: 24px;">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="classes-list-body">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                                        Đang tải dữ liệu lớp học...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Lịch học -->
+            <div id="tab-content-schedules" style="display: none;">
+                <div class="glass-card" style="padding: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                    <h3 style="font-size: 18px; font-weight: 600; color: var(--text-white);">Quản lý thời khóa biểu lịch học</h3>
+                    <button onclick="openScheduleModal()" class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i> Thêm lịch học mới
+                    </button>
+                </div>
+
+                <div class="glass-card" style="padding: 0;">
+                    <div style="overflow-x: auto;">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Lớp học</th>
+                                    <th>HLV giảng dạy</th>
+                                    <th>Phòng học</th>
+                                    <th>Thời gian bắt đầu</th>
+                                    <th>Thời gian kết thúc</th>
+                                    <th style="text-align: right; padding-right: 24px;">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="schedules-list-body">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                                        Đang tải dữ liệu lịch học...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal 1: Thêm/Sửa Lớp học -->
+            <div id="class-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
+                <div class="glass-card" style="width: 480px; padding: 32px; background-color: var(--bg-card); max-height: 90vh; overflow-y: auto;">
+                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 24px; color: var(--text-white);" id="class-modal-title">Thêm lớp học</h3>
+                    <input type="hidden" id="edit-class-id">
+
+                    <div class="form-group">
+                        <label for="class-name" class="form-label">Tên lớp học <span style="color: var(--danger);">*</span></label>
+                        <input type="text" id="class-name" class="form-input" placeholder="Ví dụ: Lớp Yoga Cơ Bản">
+                        <div class="invalid-feedback" id="err-class-name">Tên lớp học không được để trống.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="class-trainer" class="form-label">HLV phụ trách <span style="color: var(--danger);">*</span></label>
+                        <select id="class-trainer" class="form-input">
+                            <option value="">-- Chọn HLV --</option>
+                        </select>
+                        <div class="invalid-feedback" id="err-class-trainer">Vui lòng chọn HLV.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="class-capacity" class="form-label">Số lượng học viên tối đa <span style="color: var(--danger);">*</span></label>
+                        <input type="number" id="class-capacity" class="form-input" min="1" placeholder="Ví dụ: 20">
+                        <div class="invalid-feedback" id="err-class-capacity">Số lượng chỗ không hợp lệ.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="class-status" class="form-label">Trạng thái</label>
+                        <select id="class-status" class="form-input">
+                            <option value="ACTIVE">Hoạt động</option>
+                            <option value="INACTIVE">Ngừng hoạt động</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                        <button onclick="closeClassModal()" class="btn btn-outline">Hủy</button>
+                        <button onclick="saveClass()" class="btn btn-primary">Lưu</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal 2: Thêm/Sửa Lịch học -->
+            <div id="schedule-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
+                <div class="glass-card" style="width: 480px; padding: 32px; background-color: var(--bg-card); max-height: 90vh; overflow-y: auto;">
+                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 24px; color: var(--text-white);" id="schedule-modal-title">Thêm lịch học</h3>
+                    <input type="hidden" id="edit-schedule-id">
+
+                    <div class="form-group">
+                        <label for="sched-class" class="form-label">Chọn lớp học <span style="color: var(--danger);">*</span></label>
+                        <select id="sched-class" class="form-input">
+                            <option value="">-- Chọn lớp --</option>
+                        </select>
+                        <div class="invalid-feedback" id="err-sched-class">Vui lòng chọn lớp học.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sched-room" class="form-label">Phòng học <span style="color: var(--danger);">*</span></label>
+                        <input type="text" id="sched-room" class="form-input" placeholder="Ví dụ: Studio A">
+                        <div class="invalid-feedback" id="err-sched-room">Vui lòng nhập phòng học.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sched-start" class="form-label">Thời gian bắt đầu <span style="color: var(--danger);">*</span></label>
+                        <input type="datetime-local" id="sched-start" class="form-input">
+                        <div class="invalid-feedback" id="err-sched-start">Thời gian bắt đầu không hợp lệ.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sched-end" class="form-label">Thời gian kết thúc <span style="color: var(--danger);">*</span></label>
+                        <input type="datetime-local" id="sched-end" class="form-input">
+                        <div class="invalid-feedback" id="err-sched-end">Thời gian kết thúc phải lớn hơn thời gian bắt đầu.</div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                        <button onclick="closeScheduleModal()" class="btn btn-outline">Hủy</button>
+                        <button onclick="saveSchedule()" class="btn btn-primary">Lưu</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Scripts -->
+            <script>
+                let currentTab = 'classes';
+                let trainersList = [];
+                let classesList = [];
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    loadTrainers();
+                    loadClasses();
+                    loadSchedules();
+                });
+
+                function switchTab(tab) {
+                    currentTab = tab;
+                    const btnClasses = document.getElementById('tab-btn-classes');
+                    const btnSchedules = document.getElementById('tab-btn-schedules');
+                    const contentClasses = document.getElementById('tab-content-classes');
+                    const contentSchedules = document.getElementById('tab-content-schedules');
+
+                    if (tab === 'classes') {
+                        btnClasses.className = 'btn btn-primary';
+                        btnSchedules.className = 'btn btn-outline';
+                        contentClasses.style.display = 'block';
+                        contentSchedules.style.display = 'none';
+                        loadClasses();
+                    } else {
+                        btnClasses.className = 'btn btn-outline';
+                        btnSchedules.className = 'btn btn-primary';
+                        contentClasses.style.display = 'none';
+                        contentSchedules.style.display = 'block';
+                        loadSchedules();
+                    }
+                }
+
+                // API Calls
+                async function loadTrainers() {
+                    try {
+                        const res = await fetch('/api/trainers?size=1000');
+                        if (res.ok) {
+                            const data = await res.json();
+                            trainersList = data.content || [];
+                            
+                            // Populate Trainer dropdown in class modal
+                            const classTrainerSelect = document.getElementById('class-trainer');
+                            classTrainerSelect.innerHTML = '<option value="">-- Chọn HLV --</option>';
+                            trainersList.forEach(t => {
+                                classTrainerSelect.innerHTML += `<option value="${t.id}">${t.fullName} (${t.trainerCode})</option>`;
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error loading trainers:', e);
+                    }
+                }
+
+                async function loadClasses() {
+                    const tbody = document.getElementById('classes-list-body');
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Đang tải dữ liệu lớp học...</td></tr>';
+                    try {
+                        const res = await fetch('/api/classes');
+                        if (res.ok) {
+                            classesList = await res.json();
+                            tbody.innerHTML = '';
+                            if (classesList.length === 0) {
+                                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có lớp học nào.</td></tr>';
+                                return;
+                            }
+
+                            // Update schedule classes dropdown
+                            const schedClassSelect = document.getElementById('sched-class');
+                            schedClassSelect.innerHTML = '<option value="">-- Chọn lớp --</option>';
+
+                            classesList.forEach(c => {
+                                if (c.status === 'ACTIVE') {
+                                    schedClassSelect.innerHTML += `<option value="${c.id}">${c.className}</option>`;
+                                }
+
+                                const badge = c.status === 'ACTIVE' 
+                                    ? '<span class="status-badge status-active">Hoạt động</span>' 
+                                    : '<span class="status-badge status-expired">Ngừng hoạt động</span>';
+
+                                tbody.innerHTML += `
+                                    <tr>
+                                        <td>${c.id}</td>
+                                        <td style="font-weight: 500; color: var(--text-white);">${c.className}</td>
+                                        <td>${c.trainer ? c.trainer.fullName : '--'}</td>
+                                        <td style="text-align: center;">${c.capacity}</td>
+                                        <td>${badge}</td>
+                                        <td style="text-align: right; padding-right: 24px;">
+                                            <button onclick="editClass(${c.id})" class="btn btn-outline" style="padding: 4px 8px; font-size: 12px; margin-right: 6px;">
+                                                <i class="fa-solid fa-pen"></i> Sửa
+                                            </button>
+                                            <button onclick="deleteClass(${c.id})" class="btn btn-outline" style="padding: 4px 8px; font-size: 12px; border-color: var(--danger); color: var(--danger);">
+                                                <i class="fa-solid fa-trash"></i> Xóa
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            });
+                        }
+                    } catch (e) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--danger); padding: 20px;">Không thể tải dữ liệu lớp học.</td></tr>';
+                    }
+                }
+
+                async function loadSchedules() {
+                    const tbody = document.getElementById('schedules-list-body');
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Đang tải dữ liệu lịch học...</td></tr>';
+                    try {
+                        const res = await fetch('/api/class-schedules');
+                        if (res.ok) {
+                            const list = await res.json();
+                            tbody.innerHTML = '';
+                            if (list.length === 0) {
+                                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có lịch học nào được xếp.</td></tr>';
+                                return;
+                            }
+
+                            list.forEach(s => {
+                                const startStr = new Date(s.startTime).toLocaleString('vi-VN');
+                                const endStr = new Date(s.endTime).toLocaleString('vi-VN');
+                                tbody.innerHTML += `
+                                    <tr>
+                                        <td>${s.id}</td>
+                                        <td style="font-weight: 500; color: var(--text-white);">${s.gymClass.className}</td>
+                                        <td>${s.gymClass.trainer ? s.gymClass.trainer.fullName : '--'}</td>
+                                        <td>${s.room || '--'}</td>
+                                        <td>${startStr}</td>
+                                        <td>${endStr}</td>
+                                        <td style="text-align: right; padding-right: 24px;">
+                                            <button onclick="editSchedule(${s.id})" class="btn btn-outline" style="padding: 4px 8px; font-size: 12px; margin-right: 6px;">
+                                                <i class="fa-solid fa-pen"></i> Sửa
+                                            </button>
+                                            <button onclick="deleteSchedule(${s.id})" class="btn btn-outline" style="padding: 4px 8px; font-size: 12px; border-color: var(--danger); color: var(--danger);">
+                                                <i class="fa-solid fa-trash"></i> Xóa
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            });
+                        }
+                    } catch (e) {
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--danger); padding: 20px;">Không thể tải dữ liệu lịch học.</td></tr>';
+                    }
+                }
+
+                // Modal Functions - GymClass
+                function openClassModal() {
+                    document.getElementById('class-modal-title').textContent = 'Thêm lớp học';
+                    document.getElementById('edit-class-id').value = '';
+                    document.getElementById('class-name').value = '';
+                    document.getElementById('class-trainer').value = '';
+                    document.getElementById('class-capacity').value = '';
+                    document.getElementById('class-status').value = 'ACTIVE';
+                    
+                    clearValidation('class-name');
+                    clearValidation('class-trainer');
+                    clearValidation('class-capacity');
+
+                    document.getElementById('class-modal').style.display = 'flex';
+                }
+
+                function closeClassModal() {
+                    document.getElementById('class-modal').style.display = 'none';
+                }
+
+                async function editClass(id) {
+                    try {
+                        const res = await fetch(`/api/classes/${id}`);
+                        if (res.ok) {
+                            const c = await res.json();
+                            document.getElementById('class-modal-title').textContent = 'Sửa lớp học';
+                            document.getElementById('edit-class-id').value = c.id;
+                            document.getElementById('class-name').value = c.className;
+                            document.getElementById('class-trainer').value = c.trainer ? c.trainer.id : '';
+                            document.getElementById('class-capacity').value = c.capacity;
+                            document.getElementById('class-status').value = c.status;
+
+                            clearValidation('class-name');
+                            clearValidation('class-trainer');
+                            clearValidation('class-capacity');
+
+                            document.getElementById('class-modal').style.display = 'flex';
+                        }
+                    } catch (e) {
+                        showToast('Không thể lấy thông tin lớp học', 'error');
+                    }
+                }
+
+                async function saveClass() {
+                    const id = document.getElementById('edit-class-id').value;
+                    const className = document.getElementById('class-name').value.trim();
+                    const trainerId = document.getElementById('class-trainer').value;
+                    const capacity = document.getElementById('class-capacity').value;
+                    const status = document.getElementById('class-status').value;
+
+                    let isValid = true;
+                    isValid = validateField(document.getElementById('class-name'), className !== '', 'err-class-name') && isValid;
+                    isValid = validateField(document.getElementById('class-trainer'), trainerId !== '', 'err-class-trainer') && isValid;
+                    isValid = validateField(document.getElementById('class-capacity'), capacity > 0, 'err-class-capacity') && isValid;
+
+                    if (!isValid) return;
+
+                    const body = { className, trainerId: parseInt(trainerId), capacity: parseInt(capacity), status };
+                    const url = id ? `/api/classes/${id}` : '/api/classes';
+                    const method = id ? 'PUT' : 'POST';
+
+                    try {
+                        const res = await fetch(url, {
+                            method,
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(body)
+                        });
+                        if (res.ok) {
+                            showToast(id ? 'Cập nhật lớp học thành công!' : 'Thêm lớp học thành công!', 'success');
+                            closeClassModal();
+                            loadClasses();
+                        } else {
+                            const err = await res.json();
+                            showToast(err.message || 'Lưu thất bại', 'error');
+                        }
+                    } catch (e) {
+                        showToast('Đã xảy ra lỗi khi lưu lớp học', 'error');
+                    }
+                }
+
+                async function deleteClass(id) {
+                    showConfirm('Bạn có chắc chắn muốn ngưng hoạt động lớp học này không?', async () => {
+                        try {
+                            const res = await fetch(`/api/classes/${id}`, { method: 'DELETE' });
+                            if (res.ok) {
+                                showToast('Đã ngưng hoạt động lớp học!', 'success');
+                                loadClasses();
+                            } else {
+                                showToast('Không thể ngưng hoạt động lớp học', 'error');
+                            }
+                        } catch (e) {
+                            showToast('Lỗi hệ thống', 'error');
+                        }
+                    });
+                }
+
+                // Modal Functions - ClassSchedule
+                function openScheduleModal() {
+                    document.getElementById('schedule-modal-title').textContent = 'Xếp lịch học mới';
+                    document.getElementById('edit-schedule-id').value = '';
+                    document.getElementById('sched-class').value = '';
+                    document.getElementById('sched-room').value = '';
+                    document.getElementById('sched-start').value = '';
+                    document.getElementById('sched-end').value = '';
+
+                    clearValidation('sched-class');
+                    clearValidation('sched-room');
+                    clearValidation('sched-start');
+                    clearValidation('sched-end');
+
+                    document.getElementById('schedule-modal').style.display = 'flex';
+                }
+
+                function closeScheduleModal() {
+                    document.getElementById('schedule-modal').style.display = 'none';
+                }
+
+                async function editSchedule(id) {
+                    try {
+                        const res = await fetch(`/api/class-schedules/${id}`);
+                        if (res.ok) {
+                            const s = await res.json();
+                            document.getElementById('schedule-modal-title').textContent = 'Sửa lịch học';
+                            document.getElementById('edit-schedule-id').value = s.id;
+                            document.getElementById('sched-class').value = s.gymClass.id;
+                            document.getElementById('sched-room').value = s.room || '';
+                            
+                            // Format LocalDateTime to YYYY-MM-DDThh:mm
+                            const startStr = s.startTime ? s.startTime.substring(0, 16) : '';
+                            const endStr = s.endTime ? s.endTime.substring(0, 16) : '';
+                            
+                            document.getElementById('sched-start').value = startStr;
+                            document.getElementById('sched-end').value = endStr;
+
+                            clearValidation('sched-class');
+                            clearValidation('sched-room');
+                            clearValidation('sched-start');
+                            clearValidation('sched-end');
+
+                            document.getElementById('schedule-modal').style.display = 'flex';
+                        }
+                    } catch (e) {
+                        showToast('Không thể lấy thông tin lịch học', 'error');
+                    }
+                }
+
+                async function saveSchedule() {
+                    const id = document.getElementById('edit-schedule-id').value;
+                    const classId = document.getElementById('sched-class').value;
+                    const room = document.getElementById('sched-room').value.trim();
+                    const startTime = document.getElementById('sched-start').value;
+                    const endTime = document.getElementById('sched-end').value;
+
+                    let isValid = true;
+                    isValid = validateField(document.getElementById('sched-class'), classId !== '', 'err-sched-class') && isValid;
+                    isValid = validateField(document.getElementById('sched-room'), room !== '', 'err-sched-room') && isValid;
+                    isValid = validateField(document.getElementById('sched-start'), startTime !== '', 'err-sched-start') && isValid;
+                    isValid = validateField(document.getElementById('sched-end'), endTime !== '' && endTime > startTime, 'err-sched-end') && isValid;
+
+                    if (!isValid) return;
+
+                    const body = { classId: parseInt(classId), room, startTime, endTime };
+                    const url = id ? `/api/class-schedules/${id}` : '/api/class-schedules';
+                    const method = id ? 'PUT' : 'POST';
+
+                    try {
+                        const res = await fetch(url, {
+                            method,
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(body)
+                        });
+                        if (res.ok) {
+                            showToast(id ? 'Cập nhật lịch học thành công!' : 'Xếp lịch học thành công!', 'success');
+                            closeScheduleModal();
+                            loadSchedules();
+                        } else {
+                            const err = await res.json();
+                            showToast(err.message || 'Lưu thất bại', 'error');
+                        }
+                    } catch (e) {
+                        showToast('Đã xảy ra lỗi khi lưu lịch học', 'error');
+                    }
+                }
+
+                async function deleteSchedule(id) {
+                    showConfirm('Bạn có chắc chắn muốn xóa lịch học này không?', async () => {
+                        try {
+                            const res = await fetch(`/api/class-schedules/${id}`, { method: 'DELETE' });
+                            if (res.ok) {
+                                showToast('Đã xóa lịch học nhóm!', 'success');
+                                loadSchedules();
+                            } else {
+                                showToast('Không thể xóa lịch học', 'error');
+                            }
+                        } catch (e) {
+                            showToast('Lỗi hệ thống', 'error');
+                        }
+                    });
+                }
+
+                // Helper validations
+                function validateField(element, condition, errorId) {
+                    const errorEl = document.getElementById(errorId);
+                    if (!condition) {
+                        element.classList.add('is-invalid');
+                        if (errorEl) errorEl.style.display = 'block';
+                        return false;
+                    } else {
+                        element.classList.remove('is-invalid');
+                        if (errorEl) errorEl.style.display = 'none';
+                        return true;
+                    }
+                }
+
+                function clearValidation(fieldId) {
+                    const el = document.getElementById(fieldId);
+                    if (el) el.classList.remove('is-invalid');
+                    const errEl = document.getElementById('err-' + fieldId);
+                    if (errEl) errEl.style.display = 'none';
+                }
+            </script>
+        </div>
+    </div>
+</body>
+</html>

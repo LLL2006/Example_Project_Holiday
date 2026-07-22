@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/main :: head('Danh sách PT')}">
+</head>
+<body>
+    <div th:replace="~{layout/main :: layout(~{::content}, 'trainers')}">
+        <div th:fragment="content">
+            <!-- Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Quản lý Huấn luyện viên (PT)</h1>
+                    <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Danh sách huấn luyện viên cá nhân và chuyên môn</p>
+                </div>
+                <button onclick="openAddModal()" class="btn btn-primary">
+                    <i class="fa-solid fa-user-plus"></i> Thêm PT mới
+                </button>
+            </div>
+
+            <!-- Search and Filter Bar -->
+            <div class="glass-card" style="padding: 16px; margin-bottom: 24px; display: flex; gap: 16px; align-items: center;">
+                <div style="position: relative; flex-grow: 1;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 16px; top: 15px; color: var(--text-muted);"></i>
+                    <input type="text" id="search-input" class="form-input" style="padding-left: 45px;" placeholder="Tìm kiếm PT theo tên, số điện thoại hoặc chuyên môn...">
+                </div>
+                <button onclick="searchTrainers()" class="btn btn-primary" style="padding: 12px 24px;">
+                    Tìm kiếm
+                </button>
+            </div>
+
+            <!-- Table Card -->
+            <div class="glass-card" style="padding: 0;">
+                <div class="table-container">
+                    <table class="custom-table" id="trainers-table">
+                        <thead>
+                            <tr>
+                                <th>Mã PT</th>
+                                <th>Họ tên PT</th>
+                                <th>Số điện thoại</th>
+                                <th>Chuyên môn</th>
+                                <th>HV phụ trách</th>
+                                <th>Ca dạy hoàn thành</th>
+                                <th>Lịch hẹn sắp tới</th>
+                                <th>Trạng thái</th>
+                                <th style="text-align: right;">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trainers-list">
+                            <!-- Loaded via AJAX -->
+                            <tr>
+                                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                                    Đang tải danh sách huấn luyện viên...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-top: 1px solid var(--border-color);">
+                    <div style="font-size: 14px; color: var(--text-muted);" id="page-info">
+                        Hiển thị 0 - 0 của 0 PT
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="prevPage()" id="btn-prev" class="btn btn-secondary btn-sm" disabled>
+                            <i class="fa-solid fa-chevron-left"></i> Trước
+                        </button>
+                        <button onclick="nextPage()" id="btn-next" class="btn btn-secondary btn-sm" disabled>
+                            Sau <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add/Edit PT Modal -->
+            <div id="trainer-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
+                <div class="glass-card" style="width: 480px; padding: 32px; background-color: var(--bg-card); max-height: 90vh; overflow-y: auto;">
+                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 24px; color: var(--text-white);" id="modal-title">Thêm PT mới</h3>
+                    <input type="hidden" id="trainer-id">
+                    
+                    <!-- Trainer Code (Only needed on ADD) -->
+                    <div class="form-group" id="code-group">
+                        <label for="trainerCode" class="form-label">Mã PT <span style="color: var(--danger);">*</span></label>
+                        <input type="text" id="trainerCode" class="form-input" placeholder="Ví dụ: PT0001">
+                        <div class="invalid-feedback" id="err-trainerCode">Vui lòng nhập mã PT.</div>
+                    </div>
+
+                    <!-- Full Name -->
+                    <div class="form-group">
+                        <label for="fullName" class="form-label">Họ tên PT <span style="color: var(--danger);">*</span></label>
+                        <input type="text" id="fullName" class="form-input" placeholder="Nhập họ và tên PT...">
+                        <div class="invalid-feedback" id="err-fullName">Vui lòng nhập họ và tên PT.</div>
+                    </div>
+
+                    <!-- Row: Gender & DOB -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label for="gender" class="form-label">Giới tính <span style="color: var(--danger);">*</span></label>
+                            <select id="gender" class="form-select">
+                                <option value="MALE">Nam</option>
+                                <option value="FEMALE">Nữ</option>
+                                <option value="OTHER">Khác</option>
+                            </select>
+                            <div class="invalid-feedback" id="err-gender">Vui lòng chọn giới tính.</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="dateOfBirth" class="form-label">Ngày sinh <span style="color: var(--danger);">*</span></label>
+                            <input type="date" id="dateOfBirth" class="form-input">
+                            <div class="invalid-feedback" id="err-dateOfBirth">Vui lòng nhập ngày sinh.</div>
+                        </div>
+                    </div>
+
+                    <!-- Row: Phone & Email -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label for="phone" class="form-label">Số điện thoại <span style="color: var(--danger);">*</span></label>
+                            <input type="tel" id="phone" class="form-input" placeholder="Nhập số điện thoại...">
+                            <div class="invalid-feedback" id="err-phone">Vui lòng nhập số điện thoại hợp lệ.</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="email" class="form-label">Email <span style="color: var(--danger);">*</span></label>
+                            <input type="email" id="email" class="form-input" placeholder="Nhập email...">
+                            <div class="invalid-feedback" id="err-email">Vui lòng nhập email hợp lệ.</div>
+                        </div>
+                    </div>
+
+                    <!-- Specialization & Experience -->
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label for="specialization" class="form-label">Chuyên môn <span style="color: var(--danger);">*</span></label>
+                            <input type="text" id="specialization" class="form-input" placeholder="Ví dụ: Giảm cân, Tăng cơ...">
+                            <div class="invalid-feedback" id="err-specialization">Vui lòng nhập chuyên môn.</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="yearsOfExperience" class="form-label">Số năm KN <span style="color: var(--danger);">*</span></label>
+                            <input type="number" id="yearsOfExperience" class="form-input" min="0" placeholder="Ví dụ: 3">
+                            <div class="invalid-feedback" id="err-yearsOfExperience">Vui lòng nhập số năm kinh nghiệm.</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px;">
+                        <button onclick="closeModal()" class="btn btn-secondary btn-sm">Hủy</button>
+                        <button onclick="submitTrainerForm()" class="btn btn-primary btn-sm">Xác nhận</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Script -->
+            <script>
+                let currentPage = 0;
+                let pageSize = 10;
+                let isEdit = false;
+
+                async function fetchTrainers(page) {
+                    currentPage = page;
+                    const query = document.getElementById('search-input').value.trim();
+                    let url = `/api/trainers?page=${page}&size=${pageSize}`;
+                    if (query !== "") {
+                        url = `/api/trainers/search?keyword=${encodeURIComponent(query)}&page=${page}&size=${pageSize}`;
+                    }
+
+                    try {
+                        const response = await fetch(url);
+                        if (response.ok) {
+                            const data = await response.json();
+                            renderTrainers(data.content);
+                            updatePagination(data);
+                        }
+                    } catch (error) {
+                        console.error("Lỗi khi tải danh sách PT:", error);
+                    }
+                }
+
+                function renderTrainers(trainers) {
+                    const tbody = document.getElementById('trainers-list');
+                    tbody.innerHTML = '';
+
+                    if (trainers.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Không tìm thấy huấn luyện viên nào.</td></tr>`;
+                        return;
+                    }
+
+                    trainers.forEach(trainer => {
+                        const statusBadge = trainer.status === 'ACTIVE'
+                            ? '<span class="badge badge-active">Hoạt động</span>'
+                            : '<span class="badge badge-inactive">Ngừng hoạt động</span>';
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td style="font-weight: 600; color: var(--text-white);">${trainer.trainerCode}</td>
+                                <td>${trainer.fullName}</td>
+                                <td>${trainer.phone}</td>
+                                <td>${trainer.specialization}</td>
+                                <td style="font-weight: 600; color: var(--primary-light);">${trainer.totalMembers || 0} hội viên</td>
+                                <td style="font-weight: 600; color: var(--success);">${trainer.completedSessions || 0} ca</td>
+                                <td style="font-weight: 600; color: var(--warning);">${trainer.scheduledSessions || 0} ca</td>
+                                <td>${statusBadge}</td>
+                                <td style="text-align: right; display: flex; gap: 6px; justify-content: flex-end;">
+                                    <button class="btn btn-secondary btn-sm" onclick="openEditModal(${trainer.id})" style="padding: 4px 8px; color: var(--success);" title="Sửa"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button class="btn btn-secondary btn-sm" onclick="deactivateTrainer(${trainer.id})" style="padding: 4px 8px; color: var(--danger);" title="Ngừng hoạt động"><i class="fa-solid fa-ban"></i></button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                function updatePagination(pageObj) {
+                    document.getElementById('page-info').textContent = `Hiển thị ${pageObj.numberOfElements} của ${pageObj.totalElements} PT`;
+                    document.getElementById('btn-prev').disabled = pageObj.first;
+                    document.getElementById('btn-next').disabled = pageObj.last;
+                }
+
+                function prevPage() {
+                    if (currentPage > 0) fetchTrainers(currentPage - 1);
+                }
+
+                function nextPage() {
+                    fetchTrainers(currentPage + 1);
+                }
+
+                function searchTrainers() {
+                    fetchTrainers(0);
+                }
+
+                // Custom validation helper
+                function validateField(inputEl, condition, errElId) {
+                    const errEl = document.getElementById(errElId);
+                    if (condition) {
+                        inputEl.classList.remove('is-invalid');
+                        if (errEl) errEl.style.display = 'none';
+                        return true;
+                    } else {
+                        inputEl.classList.add('is-invalid');
+                        if (errEl) errEl.style.display = 'block';
+                        return false;
+                    }
+                }
+
+                function resetValidationErrors() {
+                    const fields = ['trainerCode', 'fullName', 'gender', 'dateOfBirth', 'phone', 'email', 'specialization', 'yearsOfExperience'];
+                    fields.forEach(field => {
+                        const input = document.getElementById(field);
+                        if (input) input.classList.remove('is-invalid');
+                        const err = document.getElementById('err-' + field);
+                        if (err) err.style.display = 'none';
+                    });
+                }
+
+                // Modal control
+                function openAddModal() {
+                    isEdit = false;
+                    document.getElementById('modal-title').textContent = 'Thêm PT mới';
+                    document.getElementById('trainer-id').value = '';
+                    document.getElementById('code-group').style.display = 'block';
+                    
+                    resetValidationErrors();
+                    // Reset fields
+                    document.getElementById('trainerCode').value = '';
+                    document.getElementById('fullName').value = '';
+                    document.getElementById('gender').value = 'MALE';
+                    document.getElementById('dateOfBirth').value = '';
+                    document.getElementById('phone').value = '';
+                    document.getElementById('email').value = '';
+                    document.getElementById('specialization').value = '';
+                    document.getElementById('yearsOfExperience').value = '';
+
+                    document.getElementById('trainer-modal').style.display = 'flex';
+                }
+
+                async function openEditModal(trainerId) {
+                    isEdit = true;
+                    document.getElementById('modal-title').textContent = 'Sửa thông tin PT';
+                    document.getElementById('trainer-id').value = trainerId;
+                    document.getElementById('code-group').style.display = 'none';
+                    resetValidationErrors();
+
+                    try {
+                        const response = await fetch(`/api/trainers/${trainerId}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            document.getElementById('fullName').value = data.fullName;
+                            document.getElementById('gender').value = data.gender;
+                            document.getElementById('dateOfBirth').value = data.dateOfBirth;
+                            document.getElementById('phone').value = data.phone;
+                            document.getElementById('email').value = data.email;
+                            document.getElementById('specialization').value = data.specialization;
+                            document.getElementById('yearsOfExperience').value = data.yearsOfExperience;
+                            
+                            document.getElementById('trainer-modal').style.display = 'flex';
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                function closeModal() {
+                    document.getElementById('trainer-modal').style.display = 'none';
+                    resetValidationErrors();
+                }
+
+                async function submitTrainerForm() {
+                    resetValidationErrors();
+                    
+                    let isValid = true;
+                    const trainerId = document.getElementById('trainer-id').value;
+                    
+                    const fullNameEl = document.getElementById('fullName');
+                    isValid = validateField(fullNameEl, fullNameEl.value.trim() !== '', 'err-fullName') && isValid;
+                    
+                    const genderEl = document.getElementById('gender');
+                    isValid = validateField(genderEl, genderEl.value !== '', 'err-gender') && isValid;
+                    
+                    const dobEl = document.getElementById('dateOfBirth');
+                    isValid = validateField(dobEl, dobEl.value !== '', 'err-dateOfBirth') && isValid;
+                    
+                    const phoneEl = document.getElementById('phone');
+                    const phoneRegex = /^0[0-9]{9}$/;
+                    isValid = validateField(phoneEl, phoneRegex.test(phoneEl.value.trim()), 'err-phone') && isValid;
+                    
+                    const emailEl = document.getElementById('email');
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    isValid = validateField(emailEl, emailRegex.test(emailEl.value.trim()), 'err-email') && isValid;
+                    
+                    const specializationEl = document.getElementById('specialization');
+                    isValid = validateField(specializationEl, specializationEl.value.trim() !== '', 'err-specialization') && isValid;
+                    
+                    const yearsEl = document.getElementById('yearsOfExperience');
+                    const yearsOfExperienceVal = parseInt(yearsEl.value);
+                    isValid = validateField(yearsEl, !isNaN(yearsOfExperienceVal) && yearsOfExperienceVal >= 0, 'err-yearsOfExperience') && isValid;
+
+                    let trainerCode = '';
+                    if (!isEdit) {
+                        const codeEl = document.getElementById('trainerCode');
+                        isValid = validateField(codeEl, codeEl.value.trim() !== '', 'err-trainerCode') && isValid;
+                        trainerCode = codeEl.value.trim();
+                    }
+
+                    if (!isValid) return;
+
+                    const fullName = fullNameEl.value.trim();
+                    const gender = genderEl.value;
+                    const dateOfBirth = dobEl.value;
+                    const phone = phoneEl.value.trim();
+                    const email = emailEl.value.trim();
+                    const specialization = specializationEl.value.trim();
+                    const yearsOfExperience = yearsOfExperienceVal;
+
+                    let url = '/api/trainers';
+                    let method = 'POST';
+                    let body = { fullName, gender, dateOfBirth, phone, email, specialization, yearsOfExperience };
+
+                    if (isEdit) {
+                        url = `/api/trainers/${trainerId}`;
+                        method = 'PUT';
+                    } else {
+                        body.trainerCode = trainerCode;
+                    }
+
+                    try {
+                        const response = await fetch(url, {
+                            method: method,
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(body)
+                        });
+
+                        if (response.ok) {
+                            closeModal();
+                            fetchTrainers(currentPage);
+                        } else {
+                            const err = await response.json();
+                            showToast("Lỗi: " + (err.message || "Yêu cầu không được chấp nhận."), "error");
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                async function deactivateTrainer(trainerId) {
+                    showConfirm("Bạn có chắc muốn ngừng hoạt động PT này không?", async () => {
+                        try {
+                            const response = await fetch(`/api/trainers/${trainerId}`, {
+                                method: 'DELETE'
+                            });
+                            if (response.ok) {
+                                fetchTrainers(currentPage);
+                            }
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    });
+                }
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    fetchTrainers(0);
+                    
+                    document.getElementById('search-input').addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') searchTrainers();
+                    });
+                });
+            </script>
+        </div>
+    </div>
+</body>
+</html>

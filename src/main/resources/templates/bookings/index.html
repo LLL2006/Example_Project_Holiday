@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/main :: head('Quản lý Đặt lịch')}">
+</head>
+<body>
+    <div th:replace="~{layout/main :: layout(~{::content}, 'bookings')}">
+        <div th:fragment="content">
+            <!-- Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Quản lý Đặt lịch</h1>
+                    <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Đặt lịch tập lớp học nhóm và lịch hẹn tập cá nhân (PT)</p>
+                </div>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <button onclick="switchTab('class-tab')" id="btn-class-tab" class="btn btn-primary" style="padding: 10px 20px;">
+                    <i class="fa-solid fa-graduation-cap"></i> Đăng ký Lớp học nhóm
+                </button>
+                <button onclick="switchTab('pt-tab')" id="btn-pt-tab" class="btn btn-secondary" style="padding: 10px 20px;">
+                    <i class="fa-solid fa-dumbbell"></i> Đặt lịch PT cá nhân
+                </button>
+            </div>
+
+            <!-- Member Package Status Banner -->
+            <div id="member-package-banner" class="glass-card" style="display: none; padding: 16px; margin-bottom: 24px; border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); align-items: center; justify-content: space-between; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger); font-size: 20px;"></i>
+                    <div>
+                        <div style="font-weight: 600; color: var(--text-white);" id="banner-title">Tài khoản chưa kích hoạt gói tập</div>
+                        <div style="font-size: 13px; color: var(--text-muted);" id="banner-desc">Vui lòng đăng ký gói tập để có thể đặt lịch tập lớp học nhóm và PT.</div>
+                    </div>
+                </div>
+                <a href="/packages/buy" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-cart-shopping"></i> Đăng ký Gói
+                </a>
+            </div>
+
+
+            <!-- Tab 1: Class Bookings -->
+            <div id="class-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="font-size: 18px; font-weight: 600; color: var(--text-white);">Lịch sử đăng ký lớp học</h3>
+                    <button onclick="openClassBookingModal()" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-plus"></i> Đăng ký lớp học
+                    </button>
+                </div>
+
+                <div class="glass-card" style="padding: 0;">
+                    <div class="table-container">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Hội viên</th>
+                                    <th>Tên lớp học</th>
+                                    <th>Thời gian bắt đầu</th>
+                                    <th>Phòng học</th>
+                                    <th>Trạng thái</th>
+                                    <th style="text-align: right;">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="class-bookings-list">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                                        Đang tải dữ liệu đăng ký lớp học...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: PT Bookings -->
+            <div id="pt-tab" class="tab-content" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="font-size: 18px; font-weight: 600; color: var(--text-white);">Lịch tập cá nhân (PT)</h3>
+                    <button onclick="openPtBookingModal()" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-calendar-plus"></i> Đặt lịch hẹn PT
+                    </button>
+                </div>
+
+                <div class="glass-card" style="padding: 0;">
+                    <div class="table-container">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Hội viên</th>
+                                    <th>Huấn luyện viên (PT)</th>
+                                    <th>Thời gian tập</th>
+                                    <th>Trạng thái</th>
+                                    <th style="text-align: right;">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pt-bookings-list">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                                        Đang tải dữ liệu hẹn PT...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modals -->
+
+            <!-- Class Booking Modal -->
+            <div id="class-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
+                <div class="glass-card" style="width: 460px; padding: 32px; background-color: var(--bg-card);">
+                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 24px; color: var(--text-white);">Đăng ký học nhóm</h3>
+                    
+                    <div class="form-group" id="class-member-group">
+                        <label for="class-member-select" class="form-label">Chọn hội viên <span style="color: var(--danger);">*</span></label>
+                        <select id="class-member-select" class="form-select"></select>
+                        <div class="invalid-feedback" id="err-class-member-select">Vui lòng chọn hội viên.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="class-gymclass-select" class="form-label">Chọn lớp học <span style="color: var(--danger);">*</span></label>
+                        <select id="class-gymclass-select" class="form-select" onchange="onClassSelected()"></select>
+                        <div class="invalid-feedback" id="err-class-gymclass-select">Vui lòng chọn lớp học.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="class-schedule-select" class="form-label">Chọn lịch học (Ca dạy) <span style="color: var(--danger);">*</span></label>
+                        <select id="class-schedule-select" class="form-select" disabled>
+                            <option value="">-- Vui lòng chọn lớp học trước --</option>
+                        </select>
+                        <div class="invalid-feedback" id="err-class-schedule-select">Vui lòng chọn lịch học.</div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px;">
+                        <button onclick="closeClassModal()" class="btn btn-secondary btn-sm">Hủy</button>
+                        <button onclick="submitClassBooking()" class="btn btn-primary btn-sm">Xác nhận</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PT Booking Modal -->
+            <div id="pt-booking-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
+                <div class="glass-card" style="width: 460px; padding: 32px; background-color: var(--bg-card);">
+                    <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 24px; color: var(--text-white);">Đặt lịch hẹn tập PT</h3>
+                    
+                    <div class="form-group" id="pt-member-group">
+                        <label for="pt-member-select" class="form-label">Chọn hội viên <span style="color: var(--danger);">*</span></label>
+                        <select id="pt-member-select" class="form-select"></select>
+                        <div class="invalid-feedback" id="err-pt-member-select">Vui lòng chọn hội viên.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pt-trainer-select" class="form-label">Chọn PT <span style="color: var(--danger);">*</span></label>
+                        <select id="pt-trainer-select" class="form-select"></select>
+                        <div class="invalid-feedback" id="err-pt-trainer-select">Vui lòng chọn PT.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pt-time-input" class="form-label">Thời gian tập <span style="color: var(--danger);">*</span></label>
+                        <input type="datetime-local" id="pt-time-input" class="form-input">
+                        <div class="invalid-feedback" id="err-pt-time-input">Vui lòng chọn thời gian tập.</div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px;">
+                        <button onclick="closePtBookingModal()" class="btn btn-secondary btn-sm">Hủy</button>
+                        <button onclick="submitPtBooking()" class="btn btn-primary btn-sm">Xác nhận</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scripts -->
+            <script th:inline="javascript">
+                /*<![CDATA[*/
+                const isMember = /*[[${#authorization.expression('hasRole("MEMBER")')}]]*/ false;
+                const isTrainer = /*[[${#authorization.expression('hasRole("TRAINER")')}]]*/ false;
+                /*]]>*/
+                let currentMemberId = null;
+                let currentTrainerId = null;
+                let currentTrainerName = null;
+                let currentMemberStatus = null;
+                let currentMemberExpireDate = null;
+                let allSchedulesList = [];
+
+                async function loadUserProfile() {
+                    if (isMember) {
+                        try {
+                            const response = await fetch('/api/members/me');
+                            if (response.ok) {
+                                const data = await response.json();
+                                currentMemberId = data.id;
+                                currentTrainerId = data.trainerId;
+                                currentTrainerName = data.trainerName;
+                                currentMemberStatus = data.status;
+                                currentMemberExpireDate = data.expireDate;
+
+                                // Check package status for banner display
+                                const banner = document.getElementById('member-package-banner');
+                                if (banner) {
+                                    const today = new Date();
+                                    today.setHours(0,0,0,0);
+                                    const isExpired = data.expireDate ? new Date(data.expireDate) < today : true;
+                                    
+                                    if (data.status !== 'ACTIVE' || isExpired) {
+                                        banner.style.display = 'flex';
+                                        const bannerTitle = document.getElementById('banner-title');
+                                        const bannerDesc = document.getElementById('banner-desc');
+                                        
+                                        if (!data.packageName) {
+                                            bannerTitle.textContent = "Tài khoản chưa kích hoạt gói tập";
+                                            bannerDesc.textContent = "Vui lòng đăng ký gói tập để có thể đặt lịch tập lớp học nhóm và PT.";
+                                        } else if (isExpired) {
+                                            const formattedDate = new Date(data.expireDate).toLocaleDateString('vi-VN');
+                                            bannerTitle.textContent = "Gói tập đã hết hạn";
+                                            bannerDesc.textContent = `Gói tập của bạn (${data.packageName}) đã hết hạn vào ngày ${formattedDate}. Vui lòng đăng ký gói mới để tiếp tục tập luyện.`;
+                                        } else {
+                                            bannerTitle.textContent = "Tài khoản tạm khóa hoặc ngừng hoạt động";
+                                            bannerDesc.textContent = "Vui lòng liên hệ với bộ phận CSKH/Lễ tân để kiểm tra thông tin tài khoản.";
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error fetching member profile:', error);
+                        }
+                    } else if (isTrainer) {
+                        try {
+                            const response = await fetch('/api/trainers/me');
+                            if (response.ok) {
+                                const data = await response.json();
+                                currentTrainerId = data.id;
+                                currentTrainerName = data.fullName;
+                            }
+                        } catch (error) {
+                            console.error('Error fetching trainer profile:', error);
+                        }
+                    }
+                }
+
+                function switchTab(tabId) {
+                    document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+                    document.getElementById(tabId).style.display = 'block';
+
+                    const btnClass = document.getElementById('btn-class-tab');
+                    const btnPt = document.getElementById('btn-pt-tab');
+
+                    if (tabId === 'class-tab') {
+                        btnClass.className = 'btn btn-primary';
+                        btnPt.className = 'btn btn-secondary';
+                        loadClassBookings();
+                    } else {
+                        btnClass.className = 'btn btn-secondary';
+                        btnPt.className = 'btn btn-primary';
+                        loadPtBookings();
+                    }
+                }
+
+                // Load Class Bookings List
+                async function loadClassBookings() {
+                    const tbody = document.getElementById('class-bookings-list');
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">Đang tải...</td></tr>';
+
+                    try {
+                        const response = await fetch('/api/class-bookings');
+                        if (response.ok) {
+                            const bookings = await response.json();
+                            tbody.innerHTML = '';
+                            if (bookings.length === 0) {
+                                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có lượt đăng ký lớp học nào.</td></tr>';
+                                return;
+                            }
+
+                            bookings.forEach(booking => {
+                                let badge = '';
+                                if (booking.status === 'BOOKED') {
+                                    badge = '<span class="badge badge-active">Đã đăng ký</span>';
+                                } else if (booking.status === 'ATTENDED') {
+                                    badge = '<span class="badge" style="background-color: rgba(16,185,129,0.12); color: var(--success);">Đã tham gia</span>';
+                                } else {
+                                    badge = '<span class="badge badge-inactive">Đã hủy</span>';
+                                }
+
+                                const startTimeStr = booking.classSchedule.startTime 
+                                    ? new Date(booking.classSchedule.startTime).toLocaleString('vi-VN') 
+                                    : '--';
+
+                                let cancelBtn = '';
+                                if (booking.status === 'BOOKED') {
+                                    cancelBtn = `<button class="btn btn-secondary btn-sm" onclick="cancelClassBooking(${booking.id})" style="padding: 4px 8px; color: var(--danger);"><i class="fa-solid fa-xmark"></i> Hủy</button>`;
+                                }
+
+                                tbody.innerHTML += `
+                                    <tr>
+                                        <td>${booking.member.fullName} (${booking.member.memberCode})</td>
+                                        <td style="font-weight:600; color: var(--text-white);">${booking.classSchedule.gymClass.className}</td>
+                                        <td>${startTimeStr}</td>
+                                        <td>${booking.classSchedule.room || '--'}</td>
+                                        <td>${badge}</td>
+                                        <td style="text-align: right;">${cancelBtn}</td>
+                                    </tr>
+                                `;
+                            });
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                // Load PT Bookings List
+                async function loadPtBookings() {
+                    const tbody = document.getElementById('pt-bookings-list');
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">Đang tải...</td></tr>';
+
+                    try {
+                        const response = await fetch('/api/pt-bookings');
+                        if (response.ok) {
+                            const bookings = await response.json();
+                            tbody.innerHTML = '';
+                            if (bookings.length === 0) {
+                                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có lịch hẹn tập PT nào.</td></tr>';
+                                return;
+                            }
+
+                            bookings.forEach(booking => {
+                                let badge = '';
+                                if (booking.status === 'SCHEDULED') {
+                                    badge = '<span class="badge badge-expired">Chờ tập</span>';
+                                } else if (booking.status === 'COMPLETED') {
+                                    badge = '<span class="badge badge-active">Hoàn thành</span>';
+                                } else {
+                                    badge = '<span class="badge badge-inactive">Đã hủy</span>';
+                                }
+
+                                const sessionTimeStr = booking.sessionTime 
+                                    ? new Date(booking.sessionTime).toLocaleString('vi-VN') 
+                                    : '--';
+
+                                let actions = '';
+                                if (booking.status === 'SCHEDULED') {
+                                    if (isMember) {
+                                        actions = `
+                                            <button class="btn btn-secondary btn-sm" onclick="cancelPtBooking(${booking.id})" style="padding: 4px 8px; color: var(--danger);"><i class="fa-solid fa-xmark"></i> Hủy</button>
+                                        `;
+                                    } else {
+                                        actions = `
+                                            <button class="btn btn-secondary btn-sm" onclick="completePtBooking(${booking.id})" style="padding: 4px 8px; color: var(--success);"><i class="fa-solid fa-check"></i> Xong</button>
+                                            <button class="btn btn-secondary btn-sm" onclick="cancelPtBooking(${booking.id})" style="padding: 4px 8px; color: var(--danger);"><i class="fa-solid fa-xmark"></i> Hủy</button>
+                                        `;
+                                    }
+                                }
+
+                                tbody.innerHTML += `
+                                    <tr>
+                                        <td>${booking.member.fullName} (${booking.member.memberCode})</td>
+                                        <td>${booking.trainer.fullName} (${booking.trainer.trainerCode})</td>
+                                        <td>${sessionTimeStr}</td>
+                                        <td>${badge}</td>
+                                        <td style="text-align: right; display: flex; gap: 6px; justify-content: flex-end;">${actions}</td>
+                                    </tr>
+                                `;
+                            });
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                // Class Bookings Modal Logic
+                async function openClassBookingModal() {
+                    if (isMember) {
+                        if (!currentMemberId) {
+                            await loadUserProfile();
+                        }
+                        const today = new Date();
+                        today.setHours(0,0,0,0);
+                        const isExpired = currentMemberExpireDate ? new Date(currentMemberExpireDate) < today : true;
+                        if (currentMemberStatus !== 'ACTIVE' || isExpired) {
+                            showToast("Bạn không thể đăng ký lớp học do chưa đăng ký gói tập hoặc gói tập đã hết hạn. Vui lòng đăng ký gói tập mới.", "warning");
+                            return;
+                        }
+                    }
+
+                    resetClassValidation();
+                    const memberSelect = document.getElementById('class-member-select');
+                    const classSelect = document.getElementById('class-gymclass-select');
+                    const scheduleSelect = document.getElementById('class-schedule-select');
+
+                    classSelect.innerHTML = '<option value="">Đang tải lớp học...</option>';
+                    scheduleSelect.innerHTML = '<option value="">-- Vui lòng chọn lớp học trước --</option>';
+                    scheduleSelect.disabled = true;
+
+                    document.getElementById('class-modal').style.display = 'flex';
+
+                    if (isMember) {
+                        document.getElementById('class-member-group').style.display = 'none';
+                        memberSelect.innerHTML = `<option value="${currentMemberId}" selected>Hội viên hiện tại</option>`;
+                    } else {
+                        document.getElementById('class-member-group').style.display = 'block';
+                        memberSelect.innerHTML = '<option>Đang tải hội viên...</option>';
+                        // Load Members
+                        try {
+                            const response = await fetch('/api/members?size=200&all=true');
+                            if (response.ok) {
+                                const data = await response.json();
+                                memberSelect.innerHTML = '<option value="">-- Chọn hội viên --</option>';
+                                data.content.forEach(member => {
+                                    if (member.status === 'ACTIVE') {
+                                        memberSelect.innerHTML += `<option value="${member.id}">${member.fullName} (${member.memberCode})</option>`;
+                                    }
+                                });
+                            }
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    }
+
+                    // Load Classes
+                    try {
+                        const response = await fetch('/api/classes');
+                        if (response.ok) {
+                            const classes = await response.json();
+                            classSelect.innerHTML = '<option value="">-- Chọn lớp học --</option>';
+                            classes.forEach(c => {
+                                if (c.status === 'ACTIVE') {
+                                    classSelect.innerHTML += `<option value="${c.id}">${c.className}</option>`;
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+
+                    // Load Schedules into global array
+                    try {
+                        const response = await fetch('/api/class-bookings/schedules');
+                        if (response.ok) {
+                            allSchedulesList = await response.json();
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                function onClassSelected() {
+                    const classId = document.getElementById('class-gymclass-select').value;
+                    const scheduleSelect = document.getElementById('class-schedule-select');
+
+                    if (!classId) {
+                        scheduleSelect.innerHTML = '<option value="">-- Vui lòng chọn lớp học trước --</option>';
+                        scheduleSelect.disabled = true;
+                        return;
+                    }
+
+                    const filtered = allSchedulesList.filter(s => s.gymClass.id == classId);
+                    
+                    if (filtered.length === 0) {
+                        scheduleSelect.innerHTML = '<option value="">-- Không có lịch học cho lớp này --</option>';
+                        scheduleSelect.disabled = true;
+                    } else {
+                        scheduleSelect.innerHTML = '<option value="">-- Chọn lịch học (Ca dạy) --</option>';
+                        filtered.forEach(sched => {
+                            const start = new Date(sched.startTime).toLocaleString('vi-VN');
+                            scheduleSelect.innerHTML += `<option value="${sched.id}">Phòng ${sched.room || 'A'} - ${start}</option>`;
+                        });
+                        scheduleSelect.disabled = false;
+                    }
+                }
+
+                // Custom validation helper
+                function validateField(inputEl, condition, errElId) {
+                    const errEl = document.getElementById(errElId);
+                    if (condition) {
+                        inputEl.classList.remove('is-invalid');
+                        if (errEl) errEl.style.display = 'none';
+                        return true;
+                    } else {
+                        inputEl.classList.add('is-invalid');
+                        if (errEl) errEl.style.display = 'block';
+                        return false;
+                    }
+                }
+
+                function resetClassValidation() {
+                    const fields = ['class-member-select', 'class-gymclass-select', 'class-schedule-select'];
+                    fields.forEach(field => {
+                        const input = document.getElementById(field);
+                        if (input) input.classList.remove('is-invalid');
+                        const err = document.getElementById('err-' + field);
+                        if (err) err.style.display = 'none';
+                    });
+                }
+
+                function closeClassModal() {
+                    document.getElementById('class-modal').style.display = 'none';
+                    resetClassValidation();
+                }
+
+                async function submitClassBooking() {
+                    resetClassValidation();
+                    
+                    let isValid = true;
+                    const memberSelect = document.getElementById('class-member-select');
+                    isValid = validateField(memberSelect, memberSelect.value !== '', 'err-class-member-select') && isValid;
+
+                    const classSelect = document.getElementById('class-gymclass-select');
+                    isValid = validateField(classSelect, classSelect.value !== '', 'err-class-gymclass-select') && isValid;
+
+                    const scheduleSelect = document.getElementById('class-schedule-select');
+                    isValid = validateField(scheduleSelect, scheduleSelect.value !== '', 'err-class-schedule-select') && isValid;
+
+                    if (!isValid) return;
+
+                    const memberId = memberSelect.value;
+                    const classScheduleId = scheduleSelect.value;
+
+                    try {
+                        const response = await fetch('/api/class-bookings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ memberId, classScheduleId })
+                        });
+
+                        if (response.ok) {
+                            closeClassModal();
+                            loadClassBookings();
+                        } else {
+                            const err = await response.json();
+                            showToast("Lỗi: " + (err.message || "Yêu cầu đăng ký không hợp lệ."), "error");
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                async function cancelClassBooking(id) {
+                    showConfirm("Bạn có muốn hủy lượt đăng ký lớp học này không?", async () => {
+                        try {
+                            const response = await fetch(`/api/class-bookings/${id}/cancel`, {
+                                method: 'PUT'
+                            });
+                            if (response.ok) {
+                                loadClassBookings();
+                            }
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    });
+                }
+
+                // PT Bookings Modal Logic
+                async function openPtBookingModal() {
+                    if (isMember) {
+                        if (!currentMemberId) {
+                            await loadUserProfile();
+                        }
+                        const today = new Date();
+                        today.setHours(0,0,0,0);
+                        const isExpired = currentMemberExpireDate ? new Date(currentMemberExpireDate) < today : true;
+                        if (currentMemberStatus !== 'ACTIVE' || isExpired) {
+                            showToast("Bạn không thể đặt lịch hẹn PT do chưa đăng ký gói tập hoặc gói tập đã hết hạn. Vui lòng đăng ký gói tập mới.", "warning");
+                            return;
+                        }
+                    }
+
+                    resetPtValidation();
+                    const memberSelect = document.getElementById('pt-member-select');
+                    const trainerSelect = document.getElementById('pt-trainer-select');
+
+                    trainerSelect.innerHTML = '<option>Đang tải PT...</option>';
+                    document.getElementById('pt-booking-modal').style.display = 'flex';
+
+                    if (isMember) {
+                        document.getElementById('pt-member-group').style.display = 'none';
+                        if (!currentMemberId) {
+                            await loadUserProfile();
+                        }
+                        memberSelect.innerHTML = `<option value="${currentMemberId}" selected>Hội viên hiện tại</option>`;
+                    } else {
+                        document.getElementById('pt-member-group').style.display = 'block';
+                        memberSelect.innerHTML = '<option>Đang tải hội viên...</option>';
+                        // Load Members
+                        try {
+                            const response = await fetch('/api/members?size=200&all=true');
+                            if (response.ok) {
+                                const data = await response.json();
+                                memberSelect.innerHTML = '<option value="">-- Chọn hội viên --</option>';
+                                data.content.forEach(member => {
+                                    if (member.status === 'ACTIVE') {
+                                        memberSelect.innerHTML += `<option value="${member.id}">${member.fullName} (${member.memberCode})</option>`;
+                                    }
+                                });
+                            }
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    }
+
+                    // Load PTs
+                    if (isMember) {
+                        if (currentTrainerId) {
+                            trainerSelect.innerHTML = `<option value="${currentTrainerId}" selected>${currentTrainerName}</option>`;
+                            trainerSelect.disabled = true;
+                        } else {
+                            trainerSelect.disabled = false;
+                            trainerSelect.innerHTML = '<option value="">-- Đang tải danh sách PT... --</option>';
+                            try {
+                                const response = await fetch('/api/trainers?size=200');
+                                if (response.ok) {
+                                    const data = await response.json();
+                                    trainerSelect.innerHTML = '<option value="">-- Chọn PT --</option>';
+                                    data.content.forEach(pt => {
+                                        if (pt.status === 'ACTIVE') {
+                                            trainerSelect.innerHTML += `<option value="${pt.id}">${pt.fullName} (${pt.specialization})</option>`;
+                                        }
+                                    });
+                                }
+                            } catch (error) {
+                                console.error(error);
+                            }
+                        }
+                    } else if (isTrainer) {
+                        if (currentTrainerId) {
+                            trainerSelect.innerHTML = `<option value="${currentTrainerId}" selected>${currentTrainerName}</option>`;
+                        } else {
+                            trainerSelect.innerHTML = `<option value="">-- Lỗi tải thông tin PT --</option>`;
+                        }
+                        trainerSelect.disabled = true;
+                    } else {
+                        trainerSelect.disabled = false;
+                        try {
+                            const response = await fetch('/api/trainers?size=200');
+                            if (response.ok) {
+                                const data = await response.json();
+                                trainerSelect.innerHTML = '<option value="">-- Chọn PT --</option>';
+                                data.content.forEach(pt => {
+                                    if (pt.status === 'ACTIVE') {
+                                        trainerSelect.innerHTML += `<option value="${pt.id}">${pt.fullName} (${pt.specialization})</option>`;
+                                    }
+                                });
+                            }
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    }
+                }
+
+                function resetPtValidation() {
+                    const fields = ['pt-member-select', 'pt-trainer-select', 'pt-time-input'];
+                    fields.forEach(field => {
+                        const input = document.getElementById(field);
+                        if (input) input.classList.remove('is-invalid');
+                        const err = document.getElementById('err-' + field);
+                        if (err) err.style.display = 'none';
+                    });
+                }
+
+
+
+                function closePtBookingModal() {
+                    document.getElementById('pt-booking-modal').style.display = 'none';
+                    document.getElementById('pt-time-input').value = '';
+                    resetPtValidation();
+                }
+
+                async function submitPtBooking() {
+                    resetPtValidation();
+                    
+                    let isValid = true;
+                    const memberSelect = document.getElementById('pt-member-select');
+                    isValid = validateField(memberSelect, memberSelect.value !== '', 'err-pt-member-select') && isValid;
+
+                    const trainerSelect = document.getElementById('pt-trainer-select');
+                    isValid = validateField(trainerSelect, trainerSelect.value !== '', 'err-pt-trainer-select') && isValid;
+
+                    const timeInput = document.getElementById('pt-time-input');
+                    isValid = validateField(timeInput, timeInput.value !== '', 'err-pt-time-input') && isValid;
+
+                    if (!isValid) return;
+
+                    const memberId = memberSelect.value;
+                    const trainerId = trainerSelect.value;
+                    const sessionTime = timeInput.value;
+
+                    try {
+                        const response = await fetch('/api/pt-bookings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ memberId, trainerId, sessionTime })
+                        });
+
+                        if (response.ok) {
+                            closePtBookingModal();
+                            loadPtBookings();
+                        } else {
+                            const err = await response.json();
+                            showToast("Lỗi: " + (err.message || "Không thể đặt lịch PT."), "error");
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                async function completePtBooking(id) {
+                    try {
+                        const response = await fetch(`/api/pt-bookings/${id}/complete`, { method: 'PUT' });
+                        if (response.ok) loadPtBookings();
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                async function cancelPtBooking(id) {
+                    showConfirm("Bạn có muốn hủy lịch hẹn PT này không?", async () => {
+                        try {
+                            const response = await fetch(`/api/pt-bookings/${id}/cancel`, { method: 'PUT' });
+                            if (response.ok) loadPtBookings();
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    });
+                }
+
+                // On Page Load
+                document.addEventListener('DOMContentLoaded', async () => {
+                    if (isMember || isTrainer) {
+                        await loadUserProfile();
+                    }
+                    loadClassBookings();
+                });
+            </script>
+        </div>
+    </div>
+</body>
+</html>
